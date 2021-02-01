@@ -1,0 +1,9 @@
+# ignore all the conda environments
+conda/*
+# ignore log and extra nextflow folders
+.nextflow/*
+.nextflow.log*
+output/*
+work/*
+work
+*.tar.gz

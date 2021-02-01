@@ -1,0 +1,10 @@
+output/*
+test/Deel_1_FASTQ
+test/Deel_2_FASTQ
+test/ERR4246571
+test/reference
+conda/*
+.nextflow/*
+.nextflow.log*
+COVID_0.2_NM.tar.gz
+*.pyc
