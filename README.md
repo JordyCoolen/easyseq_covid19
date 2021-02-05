@@ -47,18 +47,16 @@ docker build --rm -t covid:0.3 ./
 sh docker/run.sh covid covid:0.3
 ```
 
-## Test
-
 ### run the test sample inside the container
 ```bash
 nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test --reads "/workflow/input/test_OUT01_R{1,2}.fastq.gz"
 ```
 
-### directly execute pipeline from outside the container with test sample
+## Batch run
+
+### Excute variant pipeline non-parallel for batch of fastq.gz files
 ```bash
-docker run -it --rm --mount type=bind,source=${PWD},target=/workflow covid:0.3 \
-nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test \
---reads "/workflow/input/test_OUT01_R{1,2}.fastq.gz"
+bash docker/run.sh <path to folders containing the fastq.gz file> <image>
 ```
 
 ## Output

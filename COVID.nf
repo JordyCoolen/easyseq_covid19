@@ -197,6 +197,7 @@ process '3C_filter_variants_notpassed' {
     input:
         file vcf from rawvcf_3C
     output:
+        file("${sampleName}_3C.txt")
         file ".command.*"
     script:
         """
