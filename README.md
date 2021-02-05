@@ -7,7 +7,7 @@
 * [Docker](#DOCKER)
 * [Test](#Test)
 * [Output](#output)
-* [Flow diagram](#Flow diagram)
+* [Flow diagram](#Flow_diagram)
 * [CONTRIBUTORS](#CONTRIBUTORS)
 * [REFERENCE](#REFERENCE)
 * [DISCLAIMER](#DISCLAIMER)
@@ -26,14 +26,13 @@ sequencing data. In short:
 * PDF and HTML rapport as output
 
 ## INSTALL
-
-install docker on your system
-download docker image
-pull this repo into your system
-cd to repo
-open the image 
-```bash
-sh docker/run.sh covid covid:0.3
+```
+* install docker on your system
+* download docker image
+* pull this repo into your system
+* cd to repo
+* open the image:
+     sh docker/run.sh covid covid:0.3
 ```
 
 ## DOCKER
@@ -50,12 +49,12 @@ sh docker/run.sh covid covid:0.3
 
 ## Test
 
-### test run inside the container
+### run the test sample inside the container
 ```bash
 nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test --reads "/workflow/input/test_OUT01_R{1,2}.fastq.gz"
 ```
 
-### directly execute pipeline from outside the container
+### directly execute pipeline from outside the container with test sample
 ```bash
 docker run -it --rm --mount type=bind,source=${PWD},target=/workflow covid:0.3 \
 nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test \
@@ -132,27 +131,27 @@ nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test \
 * pangolin
 
 ## CONTRIBUTORS
-Radboudumc
 Department of Medical Microbiology and Radboudumc Center for Infectious Diseases, Radboud university medical center, Nijmegen, The Netherlands
 * J.P.M. Coolen
-jordy.coolen@radboudumc.nl
+  (jordy.coolen@radboudumc.nl)
 
 NimaGen B.V., Nijmegen, The Netherlands
-* R. A. Lammerts (NimaGen, Nijmegen, The Netherlands)
+* R. A. Lammerts (NimaGen B.V., Nijmegen, The Netherlands)
 * J.T. Vonk (Student HAN Bioinformatics, Nijmegen, The Netherlands)
 
 ## REFERENCE
 For citing this work please cite:
 
-Novel SARS-CoV-2 Whole-genome sequencing technique using Reverse Complement PCR enables easy, fast and accurate outbreak analysis in hospital and community settings
-Femke Wolters, Jordy P.M. Coolen, Alma Tostmann, Lenneke F.J. van Groningen, Chantal P. Bleeker-Rovers, Edward C.T.H. Tan, Nannet van der Geest-Blankert, Jeannine L.A. Hautvast, Joost Hopman, Heiman F.L. Wertheim, Janette C. Rahamat-Langendoen, Marko Storch, Willem J.G. Melchers
-bioRxiv 2020.10.29.360578; doi: https://doi.org/10.1101/2020.10.29.360578.
+**Novel SARS-CoV-2 Whole-genome sequencing technique using Reverse Complement PCR enables easy, fast and accurate outbreak analysis in hospital and community settings**
+*Femke Wolters, Jordy P.M. Coolen, Alma Tostmann, Lenneke F.J. van Groningen, Chantal P. Bleeker-Rovers, Edward C.T.H. Tan, Nannet van der Geest-Blankert, Jeannine L.A. Hautvast, Joost Hopman, Heiman F.L. Wertheim, Janette C. Rahamat-Langendoen, Marko Storch, Willem J.G. Melchers
+bioRxiv 2020.10.29.360578; doi: https://doi.org/10.1101/2020.10.29.360578.*
 
 The work is currently under revision.
 
 ## DISCLAIMER
+This is for Research Only.
 The code and pipeline is continuously under development.
-We cannot garantee a full error free result.
+We cannot guarantee a full error free result.
 Especially with the fast developments in SARS-CoV-2/COVID-19 sequencing and
 the continuously mutating nature of the virus.
 
