@@ -22,6 +22,7 @@ threads          = "$params.threads"
 //reference        = "params.reference"
 reference = "$baseDir/db/data/NC_045512.2/NC_045512.2.fasta"
 primerfile = "$baseDir/db/primers_bedpe.bed"
+kma_index = "$baseDir/db/kma/HV69-70"
 
 // special channel for the fastQ reads
 Channel
@@ -57,6 +58,7 @@ min_depth: $min_depth
 ~~~~~~~~~~~Databases~~~~~~~~~~~
 reference  : $reference
 primerfile : $primerfile
+kma_index  : $kma_index
 ================================
 
 """
@@ -69,7 +71,7 @@ process '1A_clean_reads' {
     input:
         set pairID, file(reads) from reads_ch1
     output:
-        set file("${reads[0].baseName}_fastp.fastq.gz"), file("${reads[1].baseName}_fastp.fastq.gz") into fastp_2A
+        set file("${reads[0].baseName}_fastp.fastq.gz"), file("${reads[1].baseName}_fastp.fastq.gz") into (fastp_2A, fastp_5B)
         file "${sampleName}.fastp.json"
         //file "${sampleName}_*.json" into meta_json_fastq
         file ".command.*"
@@ -152,10 +154,11 @@ process '3A_variant_caller' {
         file ".command.*"
     script:
         """
-        bcftools mpileup -q 0 -Q 13 \
-        --threads ${threads} --no-version -Ou -d 100000 -a \'FORMAT/DP,FORMAT/AD,FORMAT/ADF,FORMAT/ADR\' -f ${reference} ${bam} | \
 
-        bcftools call --threads ${threads} --no-version -mv -Ob -o ${sampleName}.vcf.gz
+        bcftools mpileup -L 999999 -Q 0 -q 0 -A -B -d 1000000 \
+        --threads ${threads} -a \'FORMAT/DP,FORMAT/AD,FORMAT/ADF,FORMAT/ADR\' -f ${reference} ${bam} | \
+
+        bcftools call --threads ${threads} --no-version -c -v --ploidy 1 -Ob -o ${sampleName}.vcf.gz
 
         bcftools index --threads ${threads} ${sampleName}.vcf.gz -o ${sampleName}.vcf.gz.csi
         """
@@ -172,8 +175,8 @@ process '3B_filter_variants' {
     input:
         file vcf from rawvcf_3B
     output:
-        file("${sampleName}.vcf") into vcf_5
-        file("${sampleName}_3B.txt") into variants_8
+        file("${sampleName}.vcf") into (vcf_3E, vcf_5A)
+        file("${sampleName}_3B.txt")
         file ".command.*"
     script:
         """
@@ -231,6 +234,7 @@ process '3E_non_covered_regions' {
     publishDir outDir + '/uncovered', mode: 'copy'
     input:
         file bam from bam_3E
+        file vcf from vcf_3E
     output:
         file("${sampleName}_noncov.bed") into (noncov_4A)
         file ".command.*"
@@ -238,7 +242,8 @@ process '3E_non_covered_regions' {
         """
 		bedtools genomecov -ibam ${bam} -bga | \
         awk '\$4 < ${min_depth}' | \
-        awk '{{print(\$1 \"\\t\" \$2 + 1 \"\\t\" \$3 \"\\tlow_coverage\")}}' > ${sampleName}_noncov.bed
+        awk '{{print(\$1 \"\\t\" \$2 + 1 \"\\t\" \$3 \"\\tlow_coverage\")}}' |\
+        bedtools subtract -a - -b ${vcf} > ${sampleName}_noncov.bed
         """
 }
 
@@ -269,17 +274,17 @@ process '4A_create_consensus' {
 }
 
 // annotation of genome
-process '5_annotation' {
-    tag '5'
+process '5A_annotation' {
+    tag '5A'
     conda 'bioconda::snpeff=5.0'
     publishDir outDir + '/annotation', mode: 'copy'
     publishDir outDir + '/QC', mode: 'copy', pattern: "${sampleName}_snpEff.csv"
     input:
-        file vcf from vcf_5
+        file vcf from vcf_5A
     output:
-        file("${sampleName}_annot_table.txt") into annotation_8
-        file("${sampleName}_snpEff.genes.txt") into genes_mutations_8
         file("${sampleName}_snpEff.csv") into snpEffStats_7
+        file("${sampleName}_annot_table.txt") into annotation_8
+        file("${sampleName}_snpEff.genes.txt")
         file("snpEff_summary.html")
         file ".command.*"
   script:
@@ -287,7 +292,25 @@ process '5_annotation' {
         snpEff ann -v NC_045512.2 ${vcf} -ud 0 -strict \
         -c ${baseDir}/db/snpEff.config -csvStats ${sampleName}_snpEff.csv \
         > ${vcf.baseName}_annot.vcf
-        ${baseDir}/conda/env-variantcalling/bin/python $vcf2table ${vcf.baseName}_annot.vcf --sample ${sampleName} -ad -o ${sampleName}_annot_table.txt
+        ${baseDir}/conda/env-variantcalling/bin/python $vcf2table ${vcf.baseName}_annot.vcf --sample ${sampleName} \
+        -ad -e -o ${sampleName}_annot_table.txt
+        """
+}
+
+// annotation of genome
+process '5B_HV69-70' {
+    tag '5B'
+    conda 'bioconda::kma=1.3.9'
+    publishDir outDir + '/HV69-70', mode: 'copy'
+    input:
+        set file(trimmed1), file(trimmed2) from fastp_5B
+    output:
+        file("${sampleName}.res") into HVdel_8
+        file("*")
+        file ".command.*"
+  script:
+        """
+        kma -ipe ${trimmed1} ${trimmed2} -t_db ${kma_index} -o ./${sampleName}
         """
 }
 
@@ -333,15 +356,14 @@ process '8_report' {
     input:
         file lineage from lineage_8
         file annotation from annotation_8
-        file variants from variants_8
-        file genes_mutations from genes_mutations_8
+        file HVdel from HVdel_8
     output:
         file "${sampleName}.html"
         file "${sampleName}.pdf"
         file ".command.*"
     script:
         """
-        $reporter --sampleName ${sampleName} --lineage ${lineage} --variants ${variants} --genes ${genes_mutations} \
-        --annotation ${annotation}
+        $reporter --sampleName ${sampleName} --lineage ${lineage} \
+        --annotation ${annotation} --HV ${HVdel}
         """
 }

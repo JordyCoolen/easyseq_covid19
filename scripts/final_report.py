@@ -4,7 +4,7 @@
 import sys
 
 INFO = "Convert results to PDF report"
-__version__ = 0.2
+__version__ = 0.3
 ######
 
 import os
@@ -23,10 +23,8 @@ def parse_args():
                         help="location to lineage file"),
     parser.add_argument("--annotation", type=str, required=False,
                         help="location to annotation file"),
-    parser.add_argument("--variants", type=str, required=True,
-                        help="location to variants file"),
-    parser.add_argument("--genes", type=str, required=True,
-                        help="location to genes mutation file"),
+    parser.add_argument("--HVdel", type=str, required=False,
+                        help="location to kma output file for HV69-70"),
     parser.add_argument("-o", "--outputDir", type=str, required=False,
                         help="full path of output folder", default=os.path.abspath("./"))
     parser.add_argument("-v", "--version", action="version",
@@ -36,39 +34,6 @@ def parse_args():
     args = parser.parse_args()
 
     return args
-
-def check_contents(data):
-    """
-        code to check if expected keys are present in JSON
-        :param JSON: JSON object containing all the results
-        :return:
-    """
-
-    exp_keys = {'fastq': [],
-                'centrifuge': [],
-                'contaminants': [],
-                'KMA': [],
-                'WGS_typing': [],
-                'variants': ['resistance',
-                             'resistance_gene',
-                             'all_variants',
-                             'unknown',
-                             'all_drugs'],
-                'BAM_QC': ['avg_dp',
-                           'low_cov_frac',
-                           'dp_thres',
-                           'cov_thres',
-                           'qc_passed']}
-    try:
-        for k in exp_keys:
-            data[k]
-            for s in exp_keys[k]:
-                data[k][s]
-    except KeyError as e:
-        key = e.args[0]
-        print('key {} not present in json, skip report generator'.format(key))
-        exit(0)
-
 
 def fill_html(args):
     '''
@@ -100,9 +65,18 @@ def fill_html(args):
     logo = logo.replace(' ','%20')
 
     lineage_df = pd.read_csv(args.lineage)
-    variants_df = pd.read_csv(args.variants, sep='\t', engine='python', comment='##')
-    annotation_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
-    genes_df = pd.read_csv(args.genes, sep='\t', engine='python', comment='# ')
+
+    # obtain annotation file and stats
+    variant_stats_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
+
+    # filter only annotation for better overview
+    annotation_df = variant_stats_df[['Sample','Position','Var Type','HGVS','Shorthand']]
+
+    # read kma HV 69-70 results
+    HVdel_df = pd.read_csv(args.HVdel, sep='\t', engine='python')
+    HVdel_df = HVdel_df.sort_values(by=['Score'], ascending=False)
+    HVdel_df = HVdel_df.reset_index(drop=True)
+    HVdel = HVdel_df.iloc[0][0]
 
     # fill html
     template_vars = {
@@ -116,29 +90,15 @@ def fill_html(args):
         # lineage
         "lineage": lineage_df.to_html(index=False, header=True),
 
-        # variants
-        "variants": variants_df.to_html(index=False, header=True),
-
         # annotation
         "annotation": annotation_df.to_html(index=False, header=True),
 
-        # annotation
-        "genes": genes_df.to_html(index=False, header=True),
+        # HV69-70
+        "HVdel": HVdel,
 
-        # "runID": data['fastq']['runID'],
-        # "barcode": data['fastq']['barcode'],
-        #
-        # # data tables
-        # "CENTRIFUGE": CF_df.to_html(index=True, header=False),
-        # "CENTRIFUGEDATA": CFd_df.to_html(index=False, header=True),
-        # "BAMQC": BAM_QC.to_html(header=False),
-        # "CONTAMINANTS": CON_df.to_html(index=False, header=True),
-        # "SNPIT": SNPIT.to_html(index=True, header=False),
-        # "HSP": HSP.to_html(index=True, header=False),
-        # "WGS_IDEN": WGS_IDEN.to_html(index=False, header=True),
-        # "SUSCEPTIBILITY": SUS.to_html(index=False),
-        # "RESISTANCE": RES_df.to_html(index=False, header=True),
-        # "RGENE": RGENE_df.to_html(index=False, header=True),
+        # variant stats
+        "variant_stats": variant_stats_df.to_html(index=False, header=True),
+
     }
 
     # output pdf
@@ -152,62 +112,6 @@ def fill_html(args):
     # save html as pdf to disc
     HTML(string=html_out, base_url=__file__).write_pdf(outfile,
                                                        stylesheets=[os.path.join(localdir, 'report/style.css')])
-
-    sys.exit(0)
-
-    # OLD
-
-    # load contents from JSON
-    data = JSON.data
-    # check if expected keys are present
-    check_contents(data)
-
-    # centrifuge
-    CF_df = pd.DataFrame.from_dict(data['centrifuge'], orient='index')
-    CF_df = CF_df.drop(['metric', 'data', 'barplot'])
-
-    # centrifuge data
-    CFd_df = pd.DataFrame.from_dict(data['centrifuge']['data'], orient='index')
-    CFd_df = CFd_df.drop(['taxRank'])
-    CFd_df = CFd_df.transpose()
-
-    #BAM QC
-    BAM_QC = pd.DataFrame.from_dict(data['BAM_QC'], orient='index')
-
-    # contaminants
-    CON_df = pd.DataFrame.from_dict(data['contaminants']['data'], orient='index')
-    CON_df = CON_df.drop(['taxRank'])
-    CON_df = CON_df.transpose()
-
-    # Identification methods
-    if "SNP-IT" in data.keys():
-        SNPIT = pd.DataFrame.from_dict(data['SNP-IT'], orient='index')
-        SNPIT = SNPIT.drop(['sample_name'])
-    else:
-        SNPIT = pd.DataFrame(['NO DATA'])
-
-    # HSP65 identification
-    HSP = pd.DataFrame.from_dict(data['KMA'], orient='index')
-    HSP = HSP.drop(['data'])
-
-    # WGS typing
-    WGS_IDEN = pd.DataFrame.from_dict(data['WGS_typing']['data'], orient='index')
-    WGS_IDEN = WGS_IDEN.drop(['taxRank'])
-    WGS_IDEN = WGS_IDEN.drop(['taxID'])
-    WGS_IDEN = WGS_IDEN.transpose()
-
-    # get detected resistances
-    RES = data['variants']['resistance']
-
-    # create pandas dataframe of resistance mutation
-    RES_df = get_resistance_mutations(RES)
-
-    # obtain pandas dataframe of target gene mutations
-    RGENE = data['variants']['resistance_gene']
-    RGENE_df = get_resistance_gene(RGENE)
-
-    # create susceptibility table
-    SUS = susceptibility(RES_df, data)
     
 if __name__ == "__main__":
     # load arguments set global workdir

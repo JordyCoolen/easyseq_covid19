@@ -16,7 +16,6 @@ import argparse
 from collections import OrderedDict
 from sys import stdin, stdout, stderr, exit
 
-
 # GLOBALS
 # error code dict:
 ERROR_CODES = {
@@ -24,7 +23,12 @@ ERROR_CODES = {
     "snpEff_Err": 2
 }
 
-MISSENSE_SNPEFF_TAG = "missense_variant"
+# Sequence Sequence Ontology terms to excude
+EXCLUDE_SO_TERM_LIST = (
+    "start_retained",
+    "start_retained_variant",
+    "stop_retained_variant",
+    "synonymous_variant")
 
 AA_CODES = {
     "Ala":	"A",
@@ -58,62 +62,64 @@ def main():
     args = get_command_line_arguments()
 
     #with open(args.input, "r") as infile:
+    n = 0
     for n, vcfdata in enumerate(vcf2table(args.input, args.sample, 
-                                args.annotations, args.missense_only, args.remove_duplicate_snpeff)):
+                                args.annotations, args.exclude_so, args.remove_duplicate_snpeff)):
         if n == 0:
             header_out(vcfdata, args.output)    
         pass
         tabular_out(vcfdata, args.output)
+    if n == 0:
+        # output something to prevent downstream errors
+        empty_out(args.output)
 
 
-def vcf2table(vcfstream, sample_name, parse_annotations, missense_only, remove_duplicate_snpeff):
+def vcf2table(vcfstream, sample_name, parse_annotations, exclude_so, remove_duplicate_snpeff):
     """turns a vcf file into an ordered dictionary with the new headers, yields every line
     the headers in the dictionary should correspond with the table_order list
     Errors out if there is more than one call on every location, this still needs to be changed"""
     HGVS_parse_regx = get_hgvs_parse_patterns()  # for regex efficency
     with vcfpy.Reader.from_stream(vcfstream) as vcffile:
         for rec in vcffile:
+            for alt_n, alt in enumerate(rec.ALT):  # one row per ALT
+                alt = alt.value  # the alt nucleotide is needed for getting the correct annotations
             
-            if len(rec.ALT) > 1:  # TODO make compatible with multiple calls per position
-                stderr.write("WARNING, more than one ALT!\nExiting\n")
-                exit(ERROR_CODES["MultipleCall_Err"])
-           
-            if sample_name == "CHROM":
-                sample_name = rec.CHROM
-           
-            if parse_annotations:
-                for annotations in parse_snpeff_annotations(rec, missense_only, remove_duplicate_snpeff, HGVS_parse_regx):
-                    vcfdict = get_default_vcf_parse_dict(rec, sample_name)
-                    vcfdict["HGVS"], vcfdict["Shorthand"] = annotations
+                if sample_name == "CHROM":
+                    sample_name = rec.CHROM
+            
+                if parse_annotations:
+                    for annotations in parse_snpeff_annotations(rec, alt, exclude_so, remove_duplicate_snpeff, HGVS_parse_regx):
+                        vcfdict = get_default_vcf_parse_dict(rec, sample_name, alt_n)
+                        vcfdict["HGVS"], vcfdict["Shorthand"] = annotations
+                        yield vcfdict
+                else:
+                    vcfdict = get_default_vcf_parse_dict(rec, sample_name, alt_n)
                     yield vcfdict
-            else:
-                vcfdict = get_default_vcf_parse_dict(rec, sample_name)
-                yield vcfdict
 
 
-def get_default_vcf_parse_dict(rec, sample_name):
+def get_default_vcf_parse_dict(rec, sample_name, alt_n):
     """Gets called by vcf2table for getting all the required vcf fields
     More are added by vcf2table if certain critera are met"""
     return OrderedDict([
                 ("Sample",           sample_name),
                 ("Position",         rec.POS),
-                ("Var Type",         rec.ALT[0].type),
+                ("Var Type",         rec.ALT[alt_n].type),
                 ("Reference",        rec.REF),
-                ("Alternative",      rec.ALT[0].value),
+                ("Alternative",      rec.ALT[alt_n].value),
                 ("Quality",          rec.QUAL),
                 ("Total Read Depth", rec.INFO["DP"]),
                 ("Read Depth Call",  rec.calls[0].data.get("DP")),
                 ("Ref Forw",         rec.calls[0].data.get("ADF")[0]),
                 ("Ref Rev",          rec.calls[0].data.get("ADR")[0]),
-                ("Alt Forw",         rec.calls[0].data.get("ADF")[1]),
-                ("Alt Rev",          rec.calls[0].data.get("ADR")[1])
+                ("Alt Forw",         rec.calls[0].data.get("ADF")[1+alt_n]),  # ADF & ADR: [ref, alt1, alt2 e.c.t.]
+                ("Alt Rev",          rec.calls[0].data.get("ADR")[1+alt_n])
             ])
 
 
 # snpEff header:
 # 0        1            2                   3           4         5              6            7                    8       9        10      11                       12                     13                   14         15                   
 # 'Allele | Annotation | Annotation_Impact | Gene_Name | Gene_ID | Feature_Type | Feature_ID | Transcript_BioType | Rank | HGVS.c | HGVS.p | cDNA.pos / cDNA.length | CDS.pos / CDS.length | AA.pos / AA.length | Distance | ERRORS / WARNINGS
-def parse_snpeff_annotations(rec, missense_only, remove_duplicate_snpeff, HGVS_parse_regx):
+def parse_snpeff_annotations(rec, alt, exclude_so, remove_duplicate_snpeff, HGVS_parse_regx):
     """Top level function to parse HGVS annotations, has option to select for only missense variants
     These are checked against a global variable. yields dna annotation if there is no protein annotation.
     Has an option to skip duplicate annotations, as a new dictionary will be made for each annotation
@@ -123,17 +129,19 @@ def parse_snpeff_annotations(rec, missense_only, remove_duplicate_snpeff, HGVS_p
         annotation_mem = []
         for annotation in rec.INFO["ANN"]:
             annotation = annotation.split("|")
-            if (annotation[1] == MISSENSE_SNPEFF_TAG and missense_only) or not missense_only:
-                if annotation[10]:
-                    HGVS = ":".join([annotation[3], annotation[10]])
-                    Shorthand = hgvs_aasub2shorthand(HGVS, HGVS_parse_regx["aa_sub"])
-                else: 
-                    # if there is no protein notation yield the DNA one
-                    HGVS = ":".join([annotation[3], annotation[9]])
-                    Shorthand = "-"
-                if (remove_duplicate_snpeff and not HGVS in annotation_mem) or not remove_duplicate_snpeff:
-                    annotation_mem.append(HGVS)
-                    yield HGVS, Shorthand
+            # print(annotation[0], alt)
+            if annotation[0] == alt:  # check if this is the correct annotation for this alt
+                if (annotation[1] not in EXCLUDE_SO_TERM_LIST and exclude_so) or not exclude_so:
+                    if annotation[10]:
+                        HGVS = ":".join([annotation[3], annotation[10]])
+                        Shorthand = hgvs_aasub2shorthand(HGVS, HGVS_parse_regx["aa_sub"])
+                    else: 
+                        # if there is no protein notation yield the DNA one
+                        HGVS = ":".join([annotation[3], annotation[9]])
+                        Shorthand = "-"
+                    if (remove_duplicate_snpeff and not HGVS in annotation_mem) or not remove_duplicate_snpeff:
+                        annotation_mem.append(HGVS)
+                        yield HGVS, Shorthand
     except Exception as snpEff_Error:
         stderr.write(f"snpEff annotation_error!\n{snpEff_Error}\nExiting\n")
         exit(ERROR_CODES["snpEff_Err"])
@@ -179,6 +187,11 @@ def tabular_out(vcfdata, outfile):
     #print("\t".join([str(vcfdata[item]) for item in order]))
 
 
+def empty_out(outfile):
+    """output something when no variants are found. to prevent downstream crashes"""
+    outfile.write("No Variants Found\n")
+
+
 def get_command_line_arguments():
     """Handles the argument in and output on the command line, returns the
     arguments given by the user"""
@@ -192,8 +205,9 @@ def get_command_line_arguments():
     argp.add_argument("-d", "--remove_duplicate_snpeff", action="store_true",
                       help="""snpeff has a tendency to report duplicates, this is most likely caused by the covid genome having two
                       higly similar/ the same features that were annotated. say GU280_gp01 and GU280_gp01.2""")
-    argp.add_argument("-m", "--missense_only", action="store_true",
-                      help="""Select only missense mutations in annotations. labled by snpEff as \"missense_variant\"""")
+    argp.add_argument("-e", "--exclude_so", action="store_true",
+                      help=f"""Exclude certain Sequence Ontology terms from the output
+                      currently filters for: {', '.join(EXCLUDE_SO_TERM_LIST)}""")
     argp.add_argument("-o", "--output", default=stdout, nargs="?", type=argparse.FileType('w'),
                       help="""output file of the program, default = stdout""")
     return argp.parse_args()

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # USAGE
-# bash run_batch.sh <inputpath>
+# bash run_batch.sh <inputpath> <image>
 
 for fname in ${1}/*_R1.fastq.gz
 do
@@ -11,8 +11,8 @@ do
     echo "${base}_R2.fastq.gz"
 
     docker run -it --rm --mount type=bind,source=${PWD},target=/workflow \
-    --mount type=bind,source=${1},target=/workflow/test \
-    covid:0.2 nextflow run COVID.nf --sampleName ${base} \
-    --outDir /workflow/output/${base} --reads "/workflow/test/${base}_R{1,2}.fastq.gz" -resume
+    --mount type=bind,source=${1},target=/workflow/input \
+    ${2} nextflow run COVID.nf --sampleName ${base} \
+    --outDir /workflow/output/${base} --reads "/workflow/input/${base}_R{1,2}.fastq.gz" -resume
 
 done
