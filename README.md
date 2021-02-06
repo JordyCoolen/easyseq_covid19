@@ -32,25 +32,33 @@ In short:
 * PDF and HTML report as output
 
 ## INSTALL
-```bash
-install docker on your OS
-docker pull jonovox/easyseq_covid19:latest
-https://github.com/JordyCoolen/easyseq_covid19.git
-```
+1. install docker on your OS
+2. docker pull jonovox/easyseq_covid19:latest
+3. download the newest release of the pipeline via 
+   https://github.com/JordyCoolen/easyseq_covid19/releases
+4. extract the source code
+5. go into the extracted/project folder
+6. download conda environments via:
+   https://surfdrive.surf.nl/files/index.php/s/Nu67ByV5P6w3wqI
+7. extract conda.tar.gz into the project folder created at step 5
+8. Proceed to RUN examples
 
 ## RUN
-
-#### open docker runtime container from image with write rights
+### RUN_option1
+- now you have to perform the test to set everything in place
+- first time running the variant pipeline will deploy more conda environments needed 
+  to successfully install the pipeline. This can take a while.
+- open docker runtime container from image with write rights
 ```bash
 sh docker/run.sh covid easyseq_covid19:latest
 ```
 
-#### run the test sample inside the container
+- run the test sample inside the container
 ```bash
 nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test --reads "/workflow/input/test_OUT01_R{1,2}.fastq.gz"
 ```
-
-#### Excute variant pipeline non-parallel for batch of fastq.gz files
+### RUN_option2
+- you can also execute multiple samples in non-parallel way
 ```bash
 bash docker/run.sh <path to folders containing the fastq.gz file> easyseq_covid19:latest
 ```

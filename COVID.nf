@@ -415,9 +415,7 @@ process '7_QC' {
 // Process 8: generate a report for interpretation by the clinician (or for research purposes)
 process '8_report' {
     tag '8'
-    conda 'conda-forge::jinja2=2.11.1 conda-forge::weasyprint=51 \
-            conda-forge::simplejson=3.17.0 conda-forge::matplotlib=3.1.2 \
-            conda-forge::pandas=1.0.1 conda-forge::open-fonts=0.7.0'
+    conda "${baseDir}/conda/env-report"
     publishDir outDir + '/report', mode: 'copy'
     input:
         file lineage from lineage_8
