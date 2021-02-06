@@ -1,7 +1,9 @@
 output/*
 test
 conda/*
+work/*
 .nextflow/*
 .nextflow.log*
 *.tar.gz
 *.pyc
+flowchart.png.*

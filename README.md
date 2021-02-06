@@ -1,14 +1,16 @@
-# EasySeq RC-PCR SARS-CoV-2 (COVID-19) 
+# EasySeq RC-PCR SARS-CoV-2/COVID-19
 # Variant pipeline V0.3
 
 ## Table of contents
-* [General info](#general-info)
+* [GENERAL-INFO](#GENERAL-INFO)
 * [INSTALL](#INSTALL)
-* [Docker](#DOCKER)
-* [Test](#Test)
-* [Output](#output)
-* [Flow diagram](#Flow_diagram)
+* [RUN](#RUN)
+* [OUTPUT](#OUTPUT)
+* [FLOW-DIAGRAM](#FLOW-DIAGRAM)
+* [TOOLS](#TOOLS)
+* [DOCKER](#DOCKER)
 * [CONTRIBUTORS](#CONTRIBUTORS)
+* [REMARKS](#REMARKS)
 * [REFERENCE](#REFERENCE)
 * [DISCLAIMER](#DISCLAIMER)
 * [LICENSE](*LICENSE)
@@ -16,57 +18,52 @@
 ## General info
 This github repository contains an automated pipeline
 dedicated to properly analyse the EasySeq SARS-CoV-2 (COVID-19) sequence
-sequencing data. In short: 
+sequencing data. All validation are done using 149 bp or 151 bp paired-end reads.
+
+In short:
+* Automated pipeline to analyse Illumina EasySeq COVID-19 samples to a variant report
 * The pipeline cleans the Illumina sequencing data
 * Uses the SARS-CoV-2 reference genome (NC_045512.2)
 * Mutations and deletions are measured
 * Fasta consensus of the sample is created
 * Lineage is determined
 * Output is available in a structure way
-* PDF and HTML rapport as output
+* Full QC reports are created
+* PDF and HTML report as output
 
 ## INSTALL
-```
-* install docker on your system
-* download docker image
-* pull this repo into your system
-* cd to repo
-* open the image:
-     sh docker/run.sh covid covid:0.3
-```
-
-## DOCKER
-
-### build docker image
 ```bash
-docker build --rm -t covid:0.3 ./
+install docker on your OS
+docker pull jonovox/easyseq_covid19:latest
+https://github.com/JordyCoolen/easyseq_covid19.git
 ```
 
-### open docker runtime container from image with write rights
+## RUN
+
+#### open docker runtime container from image with write rights
 ```bash
-sh docker/run.sh covid covid:0.3
+sh docker/run.sh covid easyseq_covid19:latest
 ```
 
-### run the test sample inside the container
+#### run the test sample inside the container
 ```bash
 nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test --reads "/workflow/input/test_OUT01_R{1,2}.fastq.gz"
 ```
 
-## Batch run
-
-### Excute variant pipeline non-parallel for batch of fastq.gz files
+#### Excute variant pipeline non-parallel for batch of fastq.gz files
 ```bash
-bash docker/run.sh <path to folders containing the fastq.gz file> <image>
+bash docker/run.sh <path to folders containing the fastq.gz file> easyseq_covid19:latest
 ```
 
-## Output
+## OUTPUT
 ```bash
-/workflow/output/test/
+/workflow/output/test
 |-- HV69-70
 |   |-- test.aln
 |   |-- test.frag.gz
 |   |-- test.fsa
-|   `-- test.res
+|   |-- test.res
+|   `-- test_HVdel.vcf
 |-- QC
 |   |-- multiqc_data
 |   |   |-- multiqc.log
@@ -95,8 +92,7 @@ bash docker/run.sh <path to folders containing the fastq.gz file> <image>
 |   |-- test.primerclipped.bam
 |   `-- test.primerclipped.bam.bai
 |-- rawvcf
-|   |-- test.vcf.gz
-|   `-- test.vcf.gz.csi
+|   `-- test.vcf.gz
 |-- report
 |   |-- test.fasta
 |   |-- test.html
@@ -104,16 +100,21 @@ bash docker/run.sh <path to folders containing the fastq.gz file> <image>
 |-- uncovered
 |   |-- test_noncov.bed
 |   `-- test_ubiq.bed
-`-- vcf
-    |-- notpassed
-    |-- test.vcf
-    `-- test_3B.txt
+|-- vcf
+|   |-- notpassed
+|   |   `-- test_3G.txt
+|   |-- test.vcf
+|   |-- test_final.vcf
+|   `-- test_table.txt
+`-- vcf_index
+    |-- test_concat.vcf.gz
+    `-- test_concat.vcf.gz.csi
 ```
 
-## Flow diagram
+## FLOW-DIAGRAM
 ![Alt text](flowchart.png?raw=true "Flowdiagram")
 
-## List of used tools
+## TOOLS
 * nextflow
 * python
 * conda/bioconda
@@ -126,7 +127,14 @@ bash docker/run.sh <path to folders containing the fastq.gz file> <image>
 * snpEff
 * KMA
 * multiQC
-* pangolin
+* pangolin v2.1.11
+
+## DOCKER
+### build your own docker image
+```bash
+cd easyseq_covid19
+docker build --rm -t <image name> ./
+```
 
 ## CONTRIBUTORS
 Department of Medical Microbiology and Radboudumc Center for Infectious Diseases, Radboud university medical center, Nijmegen, The Netherlands
@@ -134,8 +142,22 @@ Department of Medical Microbiology and Radboudumc Center for Infectious Diseases
   (jordy.coolen@radboudumc.nl)
 
 NimaGen B.V., Nijmegen, The Netherlands
-* R. A. Lammerts (NimaGen B.V., Nijmegen, The Netherlands)
+* R.A. Lammerts (NimaGen B.V., Nijmegen, The Netherlands)
 * J.T. Vonk (Student HAN Bioinformatics, Nijmegen, The Netherlands)
+
+## REMARKS
+```bash
+spike S
+21765-21770HV 69-70 deletion
+
+The current EasySeq design is not completly overlapping the region 21765-21770 / HV 69-70.
+
+---->         To solve this a template based strategy using KMA is applied.
+      <---    This method measures which template matches best. Either Wildtype (NC_045512.2) or
+              a variant containing the 21765-21770 / HV 69-70 deletion. The result of this strategy
+              is projected in the VCF to ensure correct output. This works perfect for now because no other deletions are
+              known on this exact location.
+```
 
 ## REFERENCE
 For citing this work please cite:
@@ -143,6 +165,8 @@ For citing this work please cite:
 **Novel SARS-CoV-2 Whole-genome sequencing technique using Reverse Complement PCR enables easy, fast and accurate outbreak analysis in hospital and community settings**
 *Femke Wolters, Jordy P.M. Coolen, Alma Tostmann, Lenneke F.J. van Groningen, Chantal P. Bleeker-Rovers, Edward C.T.H. Tan, Nannet van der Geest-Blankert, Jeannine L.A. Hautvast, Joost Hopman, Heiman F.L. Wertheim, Janette C. Rahamat-Langendoen, Marko Storch, Willem J.G. Melchers
 bioRxiv 2020.10.29.360578; doi: https://doi.org/10.1101/2020.10.29.360578.*
+
+Also cite the other programs used, see list of used tools 
 
 The work is currently under revision.
 

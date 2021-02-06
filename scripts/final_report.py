@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
 ######
-import sys
-
 INFO = "Convert results to PDF report"
 __version__ = 0.3
 ######
+
+"""
+Title:          final_report.py
+Author:         J.P.M. Coolen
+Date:           06-02-2021 (dd-mm-yyyy)
+Description:    Convert results to PDF report
+"""
 
 import os
 import argparse
@@ -64,6 +69,9 @@ def fill_html(args):
     logo = os.path.join(localdir, "report/logo.png")
     logo = logo.replace(' ','%20')
 
+    logo2 = os.path.join(localdir, "report/logo2.png")
+    logo2 = logo2.replace(' ','%5')
+
     lineage_df = pd.read_csv(args.lineage)
 
     # obtain annotation file and stats
@@ -72,16 +80,11 @@ def fill_html(args):
     # filter only annotation for better overview
     annotation_df = variant_stats_df[['Sample','Position','Var Type','HGVS','Shorthand']]
 
-    # read kma HV 69-70 results
-    HVdel_df = pd.read_csv(args.HVdel, sep='\t', engine='python')
-    HVdel_df = HVdel_df.sort_values(by=['Score'], ascending=False)
-    HVdel_df = HVdel_df.reset_index(drop=True)
-    HVdel = HVdel_df.iloc[0][0]
-
     # fill html
     template_vars = {
         # pretty things
         "logo": logo,
+        "logo2": logo2,
         "version": __version__,
 
         # general info
@@ -92,9 +95,6 @@ def fill_html(args):
 
         # annotation
         "annotation": annotation_df.to_html(index=False, header=True),
-
-        # HV69-70
-        "HVdel": HVdel,
 
         # variant stats
         "variant_stats": variant_stats_df.to_html(index=False, header=True),
