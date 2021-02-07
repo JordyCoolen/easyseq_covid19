@@ -415,7 +415,7 @@ process '7_QC' {
 // Process 8: generate a report for interpretation by the clinician (or for research purposes)
 process '8_report' {
     tag '8'
-    conda "${baseDir}/conda/env-report"
+    conda "${baseDir}/conda/env-025066a104bf8ce5621e328d8009733a"
     publishDir outDir + '/report', mode: 'copy'
     input:
         file lineage from lineage_8
