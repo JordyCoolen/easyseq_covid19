@@ -40,7 +40,7 @@ In short:
 4. extract the source code
 5. go into the extracted/project folder
 6. download conda environments via:
-   https://surfdrive.surf.nl/files/index.php/s/Nu67ByV5P6w3wqI
+   https://surfdrive.surf.nl/files/index.php/s/ggoLXzMoa5iSZYa
 7. extract conda.tar.gz into the project folder created at step 5
 8. Proceed to RUN examples
 
