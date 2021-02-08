@@ -27,7 +27,7 @@ In short:
 * Mutations and deletions are measured
 * Fasta consensus of the sample is created
 * Lineage is determined
-* Output is available in a structure way
+* Output is available in a structured way
 * Full QC reports are created
 * PDF and HTML report as output
 
@@ -50,7 +50,7 @@ In short:
   to successfully install the pipeline. This can take a while.
 - open docker runtime container from image with write rights
 ```bash
-sh docker/run.sh covid easyseq_covid19:latest
+sh docker/run.sh covid jonovox/easyseq_covid19:latest
 ```
 
 - run the test sample inside the container
@@ -60,7 +60,7 @@ nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test -
 ### RUN_option2
 - you can also execute multiple samples in non-parallel way
 ```bash
-bash docker/run.sh <path to folders containing the fastq.gz file> easyseq_covid19:latest
+bash docker/run.sh <path to folders containing the fastq.gz file> jonovox/easyseq_covid19:latest
 ```
 
 ## OUTPUT
