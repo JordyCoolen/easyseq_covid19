@@ -24,6 +24,7 @@ In short:
 * Automated pipeline to analyse Illumina EasySeq COVID-19 samples to a variant report
 * The pipeline cleans the Illumina sequencing data
 * Uses the SARS-CoV-2 reference genome (NC_045512.2)
+* Custom EasySeq Primer filtering and correction
 * Mutations and deletions are measured
 * Fasta consensus of the sample is created
 * Lineage is determined
