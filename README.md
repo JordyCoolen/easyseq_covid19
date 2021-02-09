@@ -61,7 +61,7 @@ nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test -
 ### RUN_option2
 - you can also execute multiple samples in non-parallel way
 ```bash
-bash docker/run.sh <path to folders containing the fastq.gz file> jonovox/easyseq_covid19:latest
+bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extension of files> jonovox/easyseq_covid19:latest
 ```
 
 ## OUTPUT

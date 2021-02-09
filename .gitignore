@@ -1,5 +1,5 @@
 output/*
-test
+test/*
 conda/*
 work/*
 .nextflow/*

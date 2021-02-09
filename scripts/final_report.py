@@ -69,22 +69,21 @@ def fill_html(args):
     logo = os.path.join(localdir, "report/logo.png")
     logo = logo.replace(' ','%20')
 
-    logo2 = os.path.join(localdir, "report/logo2.png")
-    logo2 = logo2.replace(' ','%5')
-
     lineage_df = pd.read_csv(args.lineage)
 
     # obtain annotation file and stats
     variant_stats_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
 
     # filter only annotation for better overview
-    annotation_df = variant_stats_df[['Sample','Position','Var Type','HGVS','Shorthand']]
+    try:
+        annotation_df = variant_stats_df[['Sample','Position','Var Type','HGVS','Shorthand']]
+    except KeyError:
+        annotation_df = pd.DataFrame({'NA': []})
 
     # fill html
     template_vars = {
         # pretty things
         "logo": logo,
-        "logo2": logo2,
         "version": __version__,
 
         # general info
