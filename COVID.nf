@@ -45,7 +45,7 @@ HV69_70          = "$baseDir/scripts/HV69-70.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.3
+Variant pipeline V0.4
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
