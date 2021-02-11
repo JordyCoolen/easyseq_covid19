@@ -1,5 +1,5 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19
-# Variant pipeline V0.3
+# Variant pipeline V0.4
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)
@@ -98,8 +98,8 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 |-- mapping
 |   |-- test.bam
 |   |-- test.bam.bai
-|   |-- test.primerclipped.bam
-|   `-- test.primerclipped.bam.bai
+|   |-- test.final.bam
+|   `-- test.final.bam.bai
 |-- rawvcf
 |   `-- test.vcf.gz
 |-- report

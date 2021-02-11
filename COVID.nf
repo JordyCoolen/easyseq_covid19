@@ -121,12 +121,17 @@ process '2B_bam_clipper' {
         file bam from bam_2B
         file bamindex from bamindex_2B
     output:
-        file("${sampleName}.primerclipped.bam") into (bam_2C, bam_3A, bam_3E)
-        file("${sampleName}.primerclipped.bam.bai") into bamindex_2C
+        file("${sampleName}.final.bam") into (bam_2C, bam_3A, bam_3E)
+        file("${sampleName}.final.bam.bai") into bamindex_2C
         file ".command.*"
     script:
         """
         bamclipper.sh -b ${bam} -n ${threads} -p $primerfile
+        # output ${sampleName}.primerclipped.bam
+
+        samtools sort ${sampleName}.primerclipped.bam -o ${sampleName}.final.bam
+        samtools index ${sampleName}.final.bam
+
         """
 }
 
