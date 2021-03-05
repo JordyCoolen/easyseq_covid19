@@ -1,5 +1,5 @@
 # ${1} <runtimecontainername> example: covid
-# ${2} <imagename> example: jonovox/easyseq_covid19:0.3
+# ${2} <imagename> example: jonovox/easyseq_covid19:latest
 
 docker run \
   -it \

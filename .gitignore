@@ -7,3 +7,6 @@ work/*
 *.tar.gz
 *.pyc
 flowchart.png.*
+extra/*
+.idea/WGS_COVID19.iml
+.idea/misc.xml

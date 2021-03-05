@@ -1,5 +1,5 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19
-# Variant pipeline V0.4
+# Variant pipeline V0.5
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)
@@ -9,6 +9,7 @@
 * [FLOW-DIAGRAM](#FLOW-DIAGRAM)
 * [TOOLS](#TOOLS)
 * [DOCKER](#DOCKER)
+* [SINGULARITY](#SINGULARITY)
 * [CONTRIBUTORS](#CONTRIBUTORS)
 * [REMARKS](#REMARKS)
 * [REFERENCE](#REFERENCE)
@@ -61,7 +62,7 @@ nextflow run COVID.nf --sampleName test -resume --outDir /workflow/output/test -
 ### RUN_option2
 - you can also execute multiple samples in non-parallel way
 ```bash
-bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extension of files> jonovox/easyseq_covid19:latest
+bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extension of files> <threads> jonovox/easyseq_covid19:latest
 ```
 
 ## OUTPUT
@@ -103,6 +104,7 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 |-- rawvcf
 |   `-- test.vcf.gz
 |-- report
+|   |-- parameters.txt
 |   |-- test.fasta
 |   |-- test.html
 |   `-- test.pdf
@@ -143,6 +145,12 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 ```bash
 cd easyseq_covid19
 docker build --rm -t <image name> ./
+```
+
+## SINGULARITY
+## build SINGULARITY IMAGE from dockerhub
+```bash
+singularity build <imagename>.simg docker://jonovox/easyseq_covid19:latest
 ```
 
 ## CONTRIBUTORS

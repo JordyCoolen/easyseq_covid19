@@ -2,7 +2,7 @@
 
 ######
 INFO = "Convert results to PDF report"
-__version__ = 0.3
+__version__ = 0.5
 ######
 
 """
@@ -28,6 +28,8 @@ def parse_args():
                         help="location to lineage file"),
     parser.add_argument("--annotation", type=str, required=False,
                         help="location to annotation file"),
+    parser.add_argument("--params", type=str, required=False,
+                        help="location to parameters.txt file"),
     parser.add_argument("--HVdel", type=str, required=False,
                         help="location to kma output file for HV69-70"),
     parser.add_argument("-o", "--outputDir", type=str, required=False,
@@ -69,14 +71,26 @@ def fill_html(args):
     logo = os.path.join(localdir, "report/logo.png")
     logo = logo.replace(' ','%20')
 
+    # load parameters.txt file
+    params_df = pd.read_csv(args.params, sep='\t')
+
+    # load file with lineage output
     lineage_df = pd.read_csv(args.lineage)
 
     # obtain annotation file and stats
     variant_stats_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
 
+    # calculate ALT freq
+    variant_stats_df["ALT freq"] = (variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) /\
+                                   (variant_stats_df["Ref Forw"]+variant_stats_df["Ref Rev"] +
+                                   variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) * 100
+
+    variant_stats_df = variant_stats_df.round({"ALT freq": 1})
+
     # filter only annotation for better overview
     try:
-        annotation_df = variant_stats_df[['Sample','Position','Var Type','HGVS','Shorthand']]
+        annotation_df = variant_stats_df[['Position','Var Type','Read Depth Call',
+                                          'ALT freq','HGVS','Shorthand']]
     except KeyError:
         annotation_df = pd.DataFrame({'NA': []})
 
@@ -97,6 +111,9 @@ def fill_html(args):
 
         # variant stats
         "variant_stats": variant_stats_df.to_html(index=False, header=True),
+
+        # parameters
+        "parameters": params_df.to_html(index=False, header=True),
 
     }
 

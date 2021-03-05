@@ -2,24 +2,18 @@
 
 params.threads = 4
 params.outDir = "./output"
-params.beta = false
-params.subsampling = true
-params.max_depth = 80
-params.min_depth = 30
-params.max_bad_cov = 0.15
 params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
 
-//bcf_filter
-call_treshold = 0.75
+//filters
+call_treshold = 0.50
 qual_treshold = 20
-min_depth = 5
+min_depth = 10
+max_ambig = 0.1
 
 // Parsing the input parameters
 sampleName       = "$params.sampleName"
 outDir           = "$params.outDir"
-subsampling      = "$params.subsampling"
 threads          = "$params.threads"
-//reference        = "params.reference"
 reference  = "$baseDir/db/data/NC_045512.2/NC_045512.2.fasta"
 primerfile = "$baseDir/db/primers_bedpe.bed"
 kma_index  = "$baseDir/db/kma/HV69-70"
@@ -32,10 +26,6 @@ Channel
       .set  { reads_ch1 }
 
 // Tools paths and command prefixes
-//picard           = "java -jar $baseDir/bin/picard.jar"
-//snpit            = "/miniconda/envs/mycoprofiler/bin/snpit" // https://github.com/philipwfowler/snpit
-//snpit_reporter   = "$baseDir/bin/MycoprofilerUtils/snpit_wrapper.py"
-//species_reporter = "$baseDir/bin/MycoprofilerUtils/species_report.py"
 fastq_reporter   = "$baseDir/scripts/fastq_report.py"
 reporter         = "$baseDir/scripts/final_report.py"
 merge_json       = "$baseDir/scripts/merge_json.py"
@@ -45,7 +35,7 @@ HV69_70          = "$baseDir/scripts/HV69-70.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.4
+Variant pipeline V0.5
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -53,10 +43,13 @@ outDir     : $params.outDir
 codeBase   : $baseDir
 threads    : $params.threads
 
-~~~~~~~~~~bcf_filter~~~~~~~~~~~~
+~~~~~~~~~~variant filter~~~~~~~~~~~~
 call_treshold: $call_treshold
 qual_treshold: $qual_treshold
 min_depth: $min_depth
+
+~~~~~~~~~~lineage filter~~~~~~~~~~~~
+max_ambig: = $max_ambig
 
 ~~~~~~~~~~~Databases~~~~~~~~~~~
 reference  : $reference
@@ -80,17 +73,11 @@ process '1A_clean_reads' {
     output:
         set file("${reads[0].baseName}_fastp.fastq.gz"), file("${reads[1].baseName}_fastp.fastq.gz") into (fastp_2A, fastp_2D)
         file "${sampleName}.fastp.json"
-        //file "${sampleName}_*.json" into meta_json_fastq
         file ".command.*"
     script:
         """
-        #$fastq_reporter -i ${reads[0]} --sample ${sampleName}
-
         fastp -i ${reads[0]} -I ${reads[1]} -o ${reads[0].baseName}_fastp.fastq.gz -O ${reads[1].baseName}_fastp.fastq.gz \
         --trim_poly_x --length_required 100 --json ${sampleName}.fastp.json --html ${sampleName}.fastp.html --thread ${threads}
-
-        # merge json results to meta json
-        #$merge_json --json1 ${sampleName}_*.json --json2 ${sampleName}.fastp_json --key fastp
         """
 }
 
@@ -112,7 +99,7 @@ process '2A_map_paired_reads' {
         """
 }
 
-// Process 2B: Map the reads to the reference genome
+// Process 2B: Filter the bam file of primer sequences
 process '2B_bam_clipper' {
     tag '2B'
     conda 'bioconda::bwa=0.7.17 bioconda::samtools=1.11 bioconda::bamclipper=1.0.0'
@@ -127,11 +114,9 @@ process '2B_bam_clipper' {
     script:
         """
         bamclipper.sh -b ${bam} -n ${threads} -p $primerfile
-        # output ${sampleName}.primerclipped.bam
 
         samtools sort ${sampleName}.primerclipped.bam -o ${sampleName}.final.bam
         samtools index ${sampleName}.final.bam
-
         """
 }
 
@@ -181,7 +166,6 @@ process '3A_variant_caller' {
         file bam from bam_3A
     output:
         file("${sampleName}.vcf.gz") into (rawvcf_3B, rawvcf_3D, rawvcf_3G) //, rawvcf_4A
-        //file("${sampleName}.vcf.gz.csi") into (rawvcfindex_4A)
         file ".command.*"
     script:
         """
@@ -326,9 +310,6 @@ process '3G_filter_variants_notpassed' {
         file ".command.*"
     script:
         """
-        # add new python to path
-        #export PATH="${baseDir}/conda/env-variantcalling/bin/:$PATH"
-
         bcftools view -Ov -i '%QUAL<${qual_treshold} || \
         %MAX(FORMAT/AD[0:1])/%MAX(FORMAT/DP)<${call_treshold} || INFO/DP<${min_depth}' ${vcf} \
         | "${baseDir}/conda/env-variantcalling/bin/python" "$vcf2table" - \
@@ -344,7 +325,6 @@ process '4A_create_consensus' {
     conda "${baseDir}/conda/env-variantcalling/"
     publishDir outDir + '/report', mode: 'copy'
     input:
-        //file vcf from rawvcf_4A
         file vcf from compressed_vcf_4A
         file vcf_index from compressed_vcf_index_4A
         file ubiq from ubiq_4A
@@ -397,7 +377,7 @@ process '6_lineage' {
         file ".command.*"
   script:
         """
-        pangolin ${consensus}
+        pangolin ${consensus} --max-ambig ${max_ambig}
         """
 }
 
@@ -417,14 +397,33 @@ process '7_QC' {
         """
 }
 
+// Process 8a: obtain run parameters
+process '8a_parameters' {
+    tag '8a'
+    publishDir outDir + '/report', mode: 'copy'
+    input:
+    output:
+        file "parameters.txt" into params_8b
+    script:
+        """
+        touch parameters.txt
+        echo "Parameter\tValue" >> parameters.txt
+        echo "mutation frequency:\t>=${call_treshold}" >> parameters.txt
+        echo "QUAL:\t>=${qual_treshold}" >> parameters.txt
+        echo "Minimum sequence depth:\t${min_depth}" >> parameters.txt
+        echo "Maximum %N:\t${max_ambig}" >> parameters.txt
+        """
+}
+
 // Process 8: generate a report for interpretation by the clinician (or for research purposes)
-process '8_report' {
-    tag '8'
+process '8b_report' {
+    tag '8b'
     conda "${baseDir}/conda/env-025066a104bf8ce5621e328d8009733a"
     publishDir outDir + '/report', mode: 'copy'
     input:
         file lineage from lineage_8
         file annotation from annotation_8
+        file params from params_8b
     output:
         file "${sampleName}.html"
         file "${sampleName}.pdf"
@@ -432,6 +431,6 @@ process '8_report' {
     script:
         """
         $reporter --sampleName ${sampleName} --lineage ${lineage} \
-        --annotation ${annotation}
+        --annotation ${annotation} --params ${params}
         """
 }
