@@ -2,13 +2,13 @@
 
 ######
 INFO = "Convert results to PDF report"
-__version__ = 0.5
+__version__ = "0.5.1"
 ######
 
 """
 Title:          final_report.py
 Author:         J.P.M. Coolen
-Date:           06-02-2021 (dd-mm-yyyy)
+Date:           09-03-2021 (dd-mm-yyyy)
 Description:    Convert results to PDF report
 """
 
@@ -30,6 +30,8 @@ def parse_args():
                         help="location to annotation file"),
     parser.add_argument("--params", type=str, required=False,
                         help="location to parameters.txt file"),
+    parser.add_argument("--stats", type=str, required=False,
+                        help="location to stats.txt file"),
     parser.add_argument("--HVdel", type=str, required=False,
                         help="location to kma output file for HV69-70"),
     parser.add_argument("-o", "--outputDir", type=str, required=False,
@@ -74,6 +76,10 @@ def fill_html(args):
     # load parameters.txt file
     params_df = pd.read_csv(args.params, sep='\t')
 
+    # load parameters.txt file
+    stats_df = pd.read_csv(args.stats, sep='\t')
+    stats_df = stats_df[['len','N','coverage']]
+
     # load file with lineage output
     lineage_df = pd.read_csv(args.lineage)
 
@@ -105,6 +111,9 @@ def fill_html(args):
 
         # lineage
         "lineage": lineage_df.to_html(index=False, header=True),
+
+        # genome stats
+        "stats": stats_df.to_html(index=False, header=True),
 
         # annotation
         "annotation": annotation_df.to_html(index=False, header=True),

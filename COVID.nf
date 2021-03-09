@@ -8,7 +8,7 @@ params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
 call_treshold = 0.50
 qual_treshold = 20
 min_depth = 10
-max_ambig = 0.1
+max_ambig = 0.3
 
 // Parsing the input parameters
 sampleName       = "$params.sampleName"
@@ -31,11 +31,12 @@ reporter         = "$baseDir/scripts/final_report.py"
 merge_json       = "$baseDir/scripts/merge_json.py"
 vcf2table        = "$baseDir/scripts/vcf2table.py"
 HV69_70          = "$baseDir/scripts/HV69-70.py"
+parse_stats      = "$baseDir/scripts/parse_stats.py"
 
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.5
+Variant pipeline V0.5.1
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -330,7 +331,7 @@ process '4A_create_consensus' {
         file ubiq from ubiq_4A
         file noncov from noncov_4A
     output:
-        file("${sampleName}.fasta") into consensus_6
+        file("${sampleName}.fasta") into (consensus_6, consensus_7b)
         file ".command.*"
   script:
         """
@@ -382,8 +383,8 @@ process '6_lineage' {
 }
 
 // multiqc
-process '7_QC' {
-    tag '7'
+process '7a_QC' {
+    tag '7a'
     conda "bioconda::multiqc"
     publishDir outDir + '/QC', mode: 'copy'
     input:
@@ -394,6 +395,23 @@ process '7_QC' {
   script:
         """
         multiqc ${outDir}/QC
+        """
+}
+
+// genome completeness/stats
+process '7b_genome_stats' {
+    tag '7b'
+    conda "bioconda::ucsc-facount"
+    publishDir outDir + '/QC', mode: 'copy'
+    input:
+        file consensus from consensus_7b
+    output:
+        file "stats.txt" into stats_8b
+        file ".command.*"
+  script:
+        """
+        facount ${consensus} > stats.txt
+        python $parse_stats --stats stats.txt
         """
 }
 
@@ -424,6 +442,7 @@ process '8b_report' {
         file lineage from lineage_8
         file annotation from annotation_8
         file params from params_8b
+        file stats from stats_8b
     output:
         file "${sampleName}.html"
         file "${sampleName}.pdf"
@@ -431,6 +450,6 @@ process '8b_report' {
     script:
         """
         $reporter --sampleName ${sampleName} --lineage ${lineage} \
-        --annotation ${annotation} --params ${params}
+        --annotation ${annotation} --params ${params} --stats ${stats}
         """
 }

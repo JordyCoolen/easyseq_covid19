@@ -1,5 +1,5 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19
-# Variant pipeline V0.5
+# Variant pipeline V0.5.1
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)
@@ -8,6 +8,7 @@
 * [OUTPUT](#OUTPUT)
 * [FLOW-DIAGRAM](#FLOW-DIAGRAM)
 * [TOOLS](#TOOLS)
+* [PANGOLIN](#PANGOLIN)
 * [DOCKER](#DOCKER)
 * [SINGULARITY](#SINGULARITY)
 * [CONTRIBUTORS](#CONTRIBUTORS)
@@ -83,6 +84,7 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 |   |   |-- multiqc_snpeff.txt
 |   |   `-- multiqc_sources.txt
 |   |-- multiqc_report.html
+|   |-- stats.txt
 |   |-- test.fastp.json
 |   |-- test.mosdepth.global.dist.txt
 |   |-- test.mosdepth.summary.txt
@@ -138,7 +140,15 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 * snpEff
 * KMA
 * multiQC
-* pangolin v2.1.11
+* pangolin v2.3.2 (pangoLEARN 2021-02-21) (default in conda.tar.gz)
+
+## PANGOLIN
+### to update the pangolin tool and database perform following commands
+```bash
+sh docker/run.sh covid jonovox/easyseq_covid19:latest
+conda activate /workflow/conda/env-pangolin
+pangolin --update
+```
 
 ## DOCKER
 ### build your own docker image
