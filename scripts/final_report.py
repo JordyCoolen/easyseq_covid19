@@ -86,12 +86,15 @@ def fill_html(args):
     # obtain annotation file and stats
     variant_stats_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
 
-    # calculate ALT freq
-    variant_stats_df["ALT freq"] = (variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) /\
-                                   (variant_stats_df["Ref Forw"]+variant_stats_df["Ref Rev"] +
-                                   variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) * 100
+    try:
+        # calculate ALT freq
+        variant_stats_df["ALT freq"] = (variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) /\
+                                       (variant_stats_df["Ref Forw"]+variant_stats_df["Ref Rev"] +
+                                       variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) * 100
 
-    variant_stats_df = variant_stats_df.round({"ALT freq": 1})
+        variant_stats_df = variant_stats_df.round({"ALT freq": 1})
+    except KeyError:
+        variant_stats_df = pd.DataFrame({'NA': []})
 
     # filter only annotation for better overview
     try:

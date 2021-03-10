@@ -50,7 +50,7 @@ qual_treshold: $qual_treshold
 min_depth: $min_depth
 
 ~~~~~~~~~~lineage filter~~~~~~~~~~~~
-max_ambig: = $max_ambig
+max_ambig: $max_ambig
 
 ~~~~~~~~~~~Databases~~~~~~~~~~~
 reference  : $reference

@@ -43,7 +43,10 @@ def read_kma_res(input):
     HVdel_df = pd.read_csv(input, sep='\t', engine='python', comment='##')
     HVdel_df = HVdel_df.sort_values(by=['Score'], ascending=False)
     HVdel_df = HVdel_df.reset_index(drop=True)
-    HVdel = HVdel_df.iloc[0][0]
+    try:
+        HVdel = HVdel_df.iloc[0][0]
+    except IndexError:
+        HVdel = 'Wildtype (NC_045512.2)'
     return HVdel
 
 if  __name__ == "__main__":
