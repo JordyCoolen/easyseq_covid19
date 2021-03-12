@@ -8,7 +8,7 @@ params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
 call_treshold = 0.50
 qual_treshold = 20
 min_depth = 10
-max_ambig = 0.3
+max_ambig = 0.09999
 
 // Parsing the input parameters
 sampleName       = "$params.sampleName"
@@ -36,7 +36,7 @@ parse_stats      = "$baseDir/scripts/parse_stats.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.5.1
+Variant pipeline V0.5.2
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -358,7 +358,7 @@ process '5A_annotation' {
         file ".command.*"
   script:
         """
-        snpEff ann -v NC_045512.2 ${vcf} -ud 0 -strict \
+        snpEff eff -v NC_045512.2 ${vcf} -ud 0 -strict -hgvs1LetterAa \
         -c ${baseDir}/db/snpEff.config -csvStats ${sampleName}_snpEff.csv \
         > ${vcf.baseName}_annot.vcf
         ${baseDir}/conda/env-variantcalling/bin/python $vcf2table ${vcf.baseName}_annot.vcf --sample ${sampleName} \

@@ -1,5 +1,5 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19
-# Variant pipeline V0.5.1
+# Variant pipeline V0.5.2
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)

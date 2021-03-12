@@ -2,7 +2,7 @@
 
 ######
 INFO = "Convert results to PDF report"
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 ######
 
 """
@@ -15,6 +15,7 @@ Description:    Convert results to PDF report
 import os
 import argparse
 import pandas as pd
+import datetime
 
 def parse_args():
     """
@@ -73,6 +74,9 @@ def fill_html(args):
     logo = os.path.join(localdir, "report/logo.png")
     logo = logo.replace(' ','%20')
 
+    # date
+    date = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
     # load parameters.txt file
     params_df = pd.read_csv(args.params, sep='\t')
 
@@ -96,10 +100,13 @@ def fill_html(args):
     except KeyError:
         variant_stats_df = pd.DataFrame({'NA': []})
 
+    # for now remove the added Shorthand column
+    variant_stats_df = variant_stats_df.drop('Shorthand', 1)
+
     # filter only annotation for better overview
     try:
         annotation_df = variant_stats_df[['Position','Var Type','Read Depth Call',
-                                          'ALT freq','HGVS','Shorthand']]
+                                          'ALT freq','HGVS']]
     except KeyError:
         annotation_df = pd.DataFrame({'NA': []})
 
@@ -111,6 +118,7 @@ def fill_html(args):
 
         # general info
         "sampleName": args.sampleName,
+        "date": date,
 
         # lineage
         "lineage": lineage_df.to_html(index=False, header=True),
