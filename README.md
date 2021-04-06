@@ -1,6 +1,6 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19 WGS kit
 # Variant pipeline V0.6.0 
-## Use with V3 of the WGS kit, else see general info)
+## Use with V3 of the WGS kit, else see general info
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)
