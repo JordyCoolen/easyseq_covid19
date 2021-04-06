@@ -15,9 +15,7 @@ sampleName       = "$params.sampleName"
 outDir           = "$params.outDir"
 threads          = "$params.threads"
 reference  = "$baseDir/db/data/NC_045512.2/NC_045512.2.fasta"
-primerfile = "$baseDir/db/primers_bedpe.bed"
-kma_index  = "$baseDir/db/kma/HV69-70"
-vcf_db     = "$baseDir/db/kma/vcf/"
+primerfile = "$baseDir/db/primers_bedpe_V3.bed"
 
 // special channel for the fastQ reads
 Channel
@@ -28,15 +26,13 @@ Channel
 // Tools paths and command prefixes
 fastq_reporter   = "$baseDir/scripts/fastq_report.py"
 reporter         = "$baseDir/scripts/final_report.py"
-merge_json       = "$baseDir/scripts/merge_json.py"
 vcf2table        = "$baseDir/scripts/vcf2table.py"
-HV69_70          = "$baseDir/scripts/HV69-70.py"
 parse_stats      = "$baseDir/scripts/parse_stats.py"
 
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.5.2
+Variant pipeline V0.6.0
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -55,7 +51,6 @@ max_ambig: $max_ambig
 ~~~~~~~~~~~Databases~~~~~~~~~~~
 reference  : $reference
 primerfile : $primerfile
-kma_index  : $kma_index
 
 ~~~~~~~~~~~Authors~~~~~~~~~~~~~~
         J.P.M. Coolen
@@ -72,7 +67,7 @@ process '1A_clean_reads' {
     input:
         set pairID, file(reads) from reads_ch1
     output:
-        set file("${reads[0].baseName}_fastp.fastq.gz"), file("${reads[1].baseName}_fastp.fastq.gz") into (fastp_2A, fastp_2D)
+        set file("${reads[0].baseName}_fastp.fastq.gz"), file("${reads[1].baseName}_fastp.fastq.gz") into fastp_2A
         file "${sampleName}.fastp.json"
         file ".command.*"
     script:
@@ -109,7 +104,7 @@ process '2B_bam_clipper' {
         file bam from bam_2B
         file bamindex from bamindex_2B
     output:
-        file("${sampleName}.final.bam") into (bam_2C, bam_3A, bam_3E)
+        file("${sampleName}.final.bam") into (bam_2C, bam_3A, bam_3D)
         file("${sampleName}.final.bam.bai") into bamindex_2C
         file ".command.*"
     script:
@@ -138,26 +133,6 @@ process '2C_depth' {
         """
 }
 
-// annotation of genome
-process '2D_HV69-70' {
-    tag '2D'
-    conda 'bioconda::kma=1.3.9'
-    publishDir outDir + '/HV69-70', mode: 'copy'
-    input:
-        set file(trimmed1), file(trimmed2) from fastp_2D
-    output:
-        file "${sampleName}_HVdel.vcf" into HVdel_3C
-        file("*")
-        file ".command.*"
-  script:
-        """
-        kma -ipe ${trimmed1} ${trimmed2} -t_db ${kma_index} -o ./${sampleName}
-
-        # will give a stdout
-        python $HV69_70 -i ./${sampleName}.res -p ${vcf_db} > ${sampleName}_HVdel.vcf
-        """
-}
-
 // Process 3A: Variant calling
 process '3A_variant_caller' {
     tag '3A'
@@ -166,7 +141,7 @@ process '3A_variant_caller' {
     input:
         file bam from bam_3A
     output:
-        file("${sampleName}.vcf.gz") into (rawvcf_3B, rawvcf_3D, rawvcf_3G) //, rawvcf_4A
+        file("${sampleName}.vcf.gz") into (rawvcf_3B, rawvcf_3C, rawvcf_3F)
         file ".command.*"
     script:
         """
@@ -187,7 +162,7 @@ process '3B_filter_variants' {
     input:
         file vcf from rawvcf_3B
     output:
-        file("${sampleName}.vcf") into (vcf_3C)
+        file("${sampleName}.vcf") into (vcf_3E, vcf_3D, vcf_5A)
         file ".command.*"
     script:
         """
@@ -196,53 +171,17 @@ process '3B_filter_variants' {
         """
 }
 
-// Process 3C: concat_vcf
-// This process merges the HV 69-70 vcf detection with the bcftools call vcf file
-// This results in a correct vcf file which will be used for further processing.
-process '3C_concat_vcf' {
-    tag '3C'
-    conda "${baseDir}/conda/env-variantcalling/"
-    publishDir outDir + '/vcf', mode: 'copy'
-    input:
-        file vcf from vcf_3C
-        file HVdel from HVdel_3C
-    output:
-        file("${sampleName}_final.vcf") into (vcf_3E, vcf_3F, vcf_5A)
-        file("${sampleName}_table.txt")
-        file ".command.*"
-    script:
-        """
-
-        # concat VCF files
-        bcftools view ${vcf} -O b > ${vcf}.gz
-        bcftools view ${HVdel} -O b > ${HVdel}.gz
-        bcftools index ${vcf}.gz -o ${vcf}.gz.csi
-        bcftools index ${HVdel}.gz -o ${HVdel}.gz.csi
-
-        bcftools reheader -s ${sampleName} ${vcf}.gz -h ${vcf} -o ${sampleName}_final.vcf.gz
-        bcftools reheader -s ${sampleName} ${HVdel}.gz -h ${vcf} -o ${sampleName}_HVdelfinal.vcf.gz
-
-        bcftools index ${sampleName}_final.vcf.gz -o ${sampleName}_final.vcf.gz.csi
-        bcftools index ${sampleName}_HVdelfinal.vcf.gz -o ${sampleName}_HVdelfinal.vcf.gz.csi
-
-        bcftools concat ${sampleName}_HVdelfinal.vcf.gz ${sampleName}_final.vcf.gz -a -d all -o ${sampleName}_final.vcf
-
-        cat ${sampleName}_final.vcf | "${baseDir}/conda/env-variantcalling/bin/python" "$vcf2table" - \
-        --sample ${sampleName} > ${sampleName}_table.txt
-        """
-}
-
-// Process 3D: ubiquitous_variant
+// Process 3C: ubiquitous_variant
 // Find the variants where we are uncertain that the variation is correct
 // so that they can be replaced/masked in the consensus seq by N
-process '3D_ubiquitous_variant' {
-    tag '3D'
+process '3C_ubiquitous_variant' {
+    tag '3C'
     conda "${baseDir}/conda/env-variantcalling/"
     publishDir outDir + '/uncovered', mode: 'copy'
     input:
-        file vcf from rawvcf_3D
+        file vcf from rawvcf_3C
     output:
-        file("${sampleName}_ubiq.bed") into (ubiq_4A)
+        file "${sampleName}_ubiq.bed"
         file ".command.*"
     script:
         """
@@ -253,17 +192,17 @@ process '3D_ubiquitous_variant' {
         """
 }
 
-// Process 3E: non_covered_regions
+// Process 3D: non_covered_regions
 // Find the regions where coverage was too low
 // so that they can be replaced/maksed in the consensus seq by N
 // uses bedtools subtract to make sure deletions are not masked
-process '3E_non_covered_regions' {
-    tag '3E'
+process '3D_non_covered_regions' {
+    tag '3D'
     conda 'bioconda::bedtools'
     publishDir outDir + '/uncovered', mode: 'copy'
     input:
-        file bam from bam_3E
-        file vcf from vcf_3E
+        file bam from bam_3D
+        file vcf from vcf_3D
     output:
         file("${sampleName}_noncov.bed") into (noncov_4A)
         file ".command.*"
@@ -276,14 +215,14 @@ process '3E_non_covered_regions' {
         """
 }
 
-// Process 3F: index_called_vcf
+// Process 3E: index_called_vcf
 // compresses and indexes the vcf file for making the consensus sequence
-process '3F_index_called_vcf' {
-    tag '3F'
+process '3E_index_called_vcf' {
+    tag '3E'
     conda "${baseDir}/conda/env-variantcalling/"
     publishDir outDir + '/vcf_index', mode: 'copy'
     input:
-        file vcf from vcf_3F
+        file vcf from vcf_3E
     output:
         file("${sampleName}_concat.vcf.gz") into (compressed_vcf_4A)
         file("${sampleName}_concat.vcf.gz.csi") into (compressed_vcf_index_4A)
@@ -296,16 +235,16 @@ process '3F_index_called_vcf' {
 }
 
 
-// Process 3G: filter_variants
+// Process 3F: filter_variants notpassed
 // Same as BCF filter, but in reverse. this is to report all variants that didn't pass the filters
 // outputs in a tabular format
 // WARNING: if filters are ever removed or added, they should change here as well
-process '3G_filter_variants_notpassed' {
-    tag '3G'
+process '3F_filter_variants_notpassed' {
+    tag '3F'
     conda "${baseDir}/conda/env-variantcalling/"
     publishDir outDir + '/vcf/notpassed', mode: 'copy'
     input:
-        file vcf from rawvcf_3G
+        file vcf from rawvcf_3F
     output:
         file("${sampleName}_3G.txt")
         file ".command.*"
@@ -319,7 +258,7 @@ process '3G_filter_variants_notpassed' {
 }
 
 
-// creates consensus fasta's
+// 4A: create the consensus fasta
 // variants that are marked as uncertain or low covered regions are masked by N
 process '4A_create_consensus' {
     tag '4A'
@@ -328,21 +267,20 @@ process '4A_create_consensus' {
     input:
         file vcf from compressed_vcf_4A
         file vcf_index from compressed_vcf_index_4A
-        file ubiq from ubiq_4A
         file noncov from noncov_4A
     output:
-        file("${sampleName}.fasta") into (consensus_6, consensus_7b)
+        file("${sampleName}.fasta") into (consensus_6, consensus_7B)
         file ".command.*"
   script:
         """
 		cat ${reference} | bcftools consensus ${vcf} \
-		-m <(cat ${noncov} ${ubiq}) \
+		-m <(cat ${noncov}) \
 		${vcf} > ${sampleName}.fasta
         sed -i 's/^>NC_045512.2/>${sampleName}/g' ${sampleName}.fasta
         """
 }
 
-// annotation of genome
+// 5A: annotation of the genome/consensus fasta
 process '5A_annotation' {
     tag '5A'
     conda 'bioconda::snpeff=5.0'
@@ -366,7 +304,7 @@ process '5A_annotation' {
         """
 }
 
-// pangolin
+// 6: pangolin to determine lineage
 process '6_lineage' {
     tag '6'
     conda "${baseDir}/conda/env-pangolin"
@@ -382,9 +320,9 @@ process '6_lineage' {
         """
 }
 
-// multiqc
-process '7a_QC' {
-    tag '7a'
+// 7A: multiqc
+process '7A_QC' {
+    tag '7A'
     conda "bioconda::multiqc"
     publishDir outDir + '/QC', mode: 'copy'
     input:
@@ -398,15 +336,15 @@ process '7a_QC' {
         """
 }
 
-// genome completeness/stats
-process '7b_genome_stats' {
-    tag '7b'
+// 7B: genome completeness/stats calculation
+process '7B_genome_stats' {
+    tag '7B'
     conda "bioconda::ucsc-facount"
     publishDir outDir + '/QC', mode: 'copy'
     input:
-        file consensus from consensus_7b
+        file consensus from consensus_7B
     output:
-        file "stats.txt" into stats_8b
+        file "stats.txt" into stats_8B
         file ".command.*"
   script:
         """
@@ -415,13 +353,13 @@ process '7b_genome_stats' {
         """
 }
 
-// Process 8a: obtain run parameters
-process '8a_parameters' {
-    tag '8a'
+// Process 8A: obtain run parameters
+process '8A_parameters' {
+    tag '8A'
     publishDir outDir + '/report', mode: 'copy'
     input:
     output:
-        file "parameters.txt" into params_8b
+        file "parameters.txt" into params_8B
     script:
         """
         touch parameters.txt
@@ -433,16 +371,16 @@ process '8a_parameters' {
         """
 }
 
-// Process 8: generate a report for interpretation by the clinician (or for research purposes)
-process '8b_report' {
-    tag '8b'
+// Process 8B: generate a report for interpretation by the clinician (or for research purposes)
+process '8B_report' {
+    tag '8B'
     conda "${baseDir}/conda/env-025066a104bf8ce5621e328d8009733a"
     publishDir outDir + '/report', mode: 'copy'
     input:
         file lineage from lineage_8
         file annotation from annotation_8
-        file params from params_8b
-        file stats from stats_8b
+        file params from params_8B
+        file stats from stats_8B
     output:
         file "${sampleName}.html"
         file "${sampleName}.pdf"

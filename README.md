@@ -1,5 +1,6 @@
-# EasySeq RC-PCR SARS-CoV-2/COVID-19
-# Variant pipeline V0.5.2
+# EasySeq RC-PCR SARS-CoV-2/COVID-19 WGS kit
+# Variant pipeline V0.6.0 
+## Use with V3 of the WGS kit, else see general info)
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)
@@ -21,6 +22,13 @@
 This github repository contains an automated pipeline
 dedicated to properly analyse the EasySeq SARS-CoV-2 (COVID-19) sequence
 sequencing data. All validation are done using 149 bp or 151 bp paired-end reads.
+
+version 1 or 2 of the EasySeq RC-PCR SARS-CoV-2 WGS kit
+* Use version v0.5.2 of the github
+https://github.com/JordyCoolen/easyseq_covid19/releases/tag/v0.5.2
+
+version 3 of the EasySeq RC-PCR SARS-CoV-2 WGS kit
+* Use code version v0.6.0 and newer
 
 In short:
 * Automated pipeline to analyse Illumina EasySeq COVID-19 samples to a variant report
@@ -68,13 +76,7 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 
 ## OUTPUT
 ```bash
-/workflow/output/test
-|-- HV69-70
-|   |-- test.aln
-|   |-- test.frag.gz
-|   |-- test.fsa
-|   |-- test.res
-|   `-- test_HVdel.vcf
+/workflow/output/test/
 |-- QC
 |   |-- multiqc_data
 |   |   |-- multiqc.log
@@ -116,9 +118,7 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 |-- vcf
 |   |-- notpassed
 |   |   `-- test_3G.txt
-|   |-- test.vcf
-|   |-- test_final.vcf
-|   `-- test_table.txt
+|   `-- test.vcf
 `-- vcf_index
     |-- test_concat.vcf.gz
     `-- test_concat.vcf.gz.csi
@@ -140,7 +140,7 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 * snpEff
 * KMA
 * multiQC
-* pangolin v2.3.2 (pangoLEARN 2021-02-21) (default in conda.tar.gz)
+* pangolin v2.3.8 (pangoLEARN 2021-04-01) (default in conda.tar.gz)
 
 ## PANGOLIN
 ### to update the pangolin tool and database perform following commands
@@ -177,13 +177,23 @@ NimaGen B.V., Nijmegen, The Netherlands
 spike S
 21765-21770HV 69-70 deletion
 
-The current EasySeq design is not completly overlapping the region 21765-21770 / HV 69-70.
+Version 1 and 2 of the EasySeq RC-PCR SARS-CoV-2 WGS kit are not completly overlapping the region 21765-21770 / HV 69-70.
+If you use these versions of the WGS kit please use:
 
----->         To solve this a template based strategy using KMA is applied.
+variant pipeline v0.5.2
+https://github.com/JordyCoolen/easyseq_covid19/releases/tag/v0.5.2
+
+---->         This version solves the not overlapping region of 21765-21770 by using a template based strategy using KMA.
       <---    This method measures which template matches best. Either Wildtype (NC_045512.2) or
               a variant containing the 21765-21770 / HV 69-70 deletion. The result of this strategy
               is projected in the VCF to ensure correct output. This works perfect for now because no other deletions are
               known on this exact location.
+
+variant pipeline v0.6.0
+
+  ---->     In Version 3 of the EasySeq RC-PCR SARS-CoV-2 WGS kit the region 21765-21770 / HV 69-70 region is           
+    <----   complety overlapping by having a new primer design. This version of the variant pipeline handles the 
+            data obtained using version 3 correctly.
 ```
 
 ## REFERENCE
