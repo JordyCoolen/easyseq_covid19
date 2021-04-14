@@ -1,5 +1,5 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19 WGS kit
-# Variant pipeline V0.6.0 
+# Variant pipeline V0.7.0 
 ## Use with V3 of the WGS kit, else see general info
 
 ## Table of contents
@@ -21,14 +21,19 @@
 ## General info
 This github repository contains an automated pipeline
 dedicated to properly analyse the EasySeq SARS-CoV-2 (COVID-19) sequence
-sequencing data. All validation are done using 149 bp or 151 bp paired-end reads.
+sequencing data. Validated with 150/151 bp paired-end reads.
+
+Advice is to redownload the conda.tar.gz after each update to
+be sure that all conda environments are set in place.
 
 version 1 or 2 of the EasySeq RC-PCR SARS-CoV-2 WGS kit
 * Use version v0.5.2 of the github
 https://github.com/JordyCoolen/easyseq_covid19/releases/tag/v0.5.2
 
 version 3 of the EasySeq RC-PCR SARS-CoV-2 WGS kit
-* Use code version v0.6.0 and newer
+* Use code version v0.7.0 and newer
+* Implemented lofreq for variant calling which gives much more
+accurate calls in the report. Consensus output is mostly unaffected.
 
 In short:
 * Automated pipeline to analyse Illumina EasySeq COVID-19 samples to a variant report
@@ -77,51 +82,51 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 ## OUTPUT
 ```bash
 /workflow/output/test/
-|-- QC
-|   |-- multiqc_data
-|   |   |-- multiqc.log
-|   |   |-- multiqc_data.json
-|   |   |-- multiqc_fastp.txt
-|   |   |-- multiqc_general_stats.txt
-|   |   |-- multiqc_snpeff.txt
-|   |   `-- multiqc_sources.txt
-|   |-- multiqc_report.html
-|   |-- stats.txt
-|   |-- test.fastp.json
-|   |-- test.mosdepth.global.dist.txt
-|   |-- test.mosdepth.summary.txt
-|   |-- test.per-base.bed.gz
-|   |-- test.per-base.bed.gz.csi
-|   `-- test_snpEff.csv
-|-- annotation
-|   |-- snpEff_summary.html
-|   |-- test_annot_table.txt
-|   |-- test_snpEff.csv
-|   `-- test_snpEff.genes.txt
-|-- lineage
-|   `-- lineage_report.csv
-|-- mapping
-|   |-- test.bam
-|   |-- test.bam.bai
-|   |-- test.final.bam
-|   `-- test.final.bam.bai
-|-- rawvcf
-|   `-- test.vcf.gz
-|-- report
-|   |-- parameters.txt
-|   |-- test.fasta
-|   |-- test.html
-|   `-- test.pdf
-|-- uncovered
-|   |-- test_noncov.bed
-|   `-- test_ubiq.bed
-|-- vcf
-|   |-- notpassed
-|   |   `-- test_3G.txt
-|   `-- test.vcf
-`-- vcf_index
-    |-- test_concat.vcf.gz
-    `-- test_concat.vcf.gz.csi
+├── QC
+│   ├── multiqc_data
+│   │   ├── multiqc.log
+│   │   ├── multiqc_data.json
+│   │   ├── multiqc_fastp.txt
+│   │   ├── multiqc_general_stats.txt
+│   │   ├── multiqc_snpeff.txt
+│   │   └── multiqc_sources.txt
+│   ├── multiqc_report.html
+│   ├── stats.txt
+│   ├── test.fastp.json
+│   ├── test.mosdepth.global.dist.txt
+│   ├── test.mosdepth.summary.txt
+│   ├── test.per-base.bed.gz
+│   ├── test.per-base.bed.gz.csi
+│   └── test_snpEff.csv
+├── annotation
+│   ├── snpEff_summary.html
+│   ├── test_annot_table.txt
+│   ├── test_snpEff.csv
+│   └── test_snpEff.genes.txt
+├── lineage
+│   └── lineage_report.csv
+├── mapping
+│   ├── test.bam
+│   ├── test.bam.bai
+│   ├── test.final.bam
+│   └── test.final.bam.bai
+├── rawvcf
+│   └── test.raw.vcf
+├── report
+│   ├── parameters.txt
+│   ├── test.fasta
+│   ├── test.html
+│   └── test.pdf
+├── uncovered
+│   ├── test_noncov.bed
+│   └── test_ubiq.bed
+└── vcf
+    ├── notpassed
+    │   └── test.notpassed.vcf
+    ├── test.final.vcf
+    ├── test.final.vcf.gz
+    ├── test.final.vcf.gz.csi
+    └── test.variants.vcf
 ```
 
 ## FLOW-DIAGRAM
@@ -135,6 +140,7 @@ bash scripts/run_batch.sh <path to folders containing the fastq.gz file> <extens
 * BWA MEM
 * samtools
 * bcftools
+* lofreq
 * mosdepth
 * bedtools
 * snpEff
@@ -175,7 +181,7 @@ NimaGen B.V., Nijmegen, The Netherlands
 ## REMARKS
 ```bash
 spike S
-21765-21770HV 69-70 deletion
+21765-21770 HV 69-70 deletion
 
 Version 1 and 2 of the EasySeq RC-PCR SARS-CoV-2 WGS kit are not completly overlapping the region 21765-21770 / HV 69-70.
 If you use these versions of the WGS kit please use:
@@ -189,7 +195,7 @@ https://github.com/JordyCoolen/easyseq_covid19/releases/tag/v0.5.2
               is projected in the VCF to ensure correct output. This works perfect for now because no other deletions are
               known on this exact location.
 
-variant pipeline v0.6.0
+variant pipeline v0.7.0
 
   ---->     In Version 3 of the EasySeq RC-PCR SARS-CoV-2 WGS kit the region 21765-21770 / HV 69-70 region is           
     <----   complety overlapping by having a new primer design. This version of the variant pipeline handles the 

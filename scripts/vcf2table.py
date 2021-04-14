@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # -*- coding: utf-8 -*-
 """
@@ -100,6 +100,8 @@ def vcf2table(vcfstream, sample_name, parse_annotations, exclude_so, remove_dupl
 def get_default_vcf_parse_dict(rec, sample_name, alt_n):
     """Gets called by vcf2table for getting all the required vcf fields
     More are added by vcf2table if certain critera are met"""
+    #print(rec.INFO["HRUN"])
+    #print(rec.INFO["CONSVAR"])
     return OrderedDict([
                 ("Sample",           sample_name),
                 ("Position",         rec.POS),
@@ -107,12 +109,20 @@ def get_default_vcf_parse_dict(rec, sample_name, alt_n):
                 ("Reference",        rec.REF),
                 ("Alternative",      rec.ALT[alt_n].value),
                 ("Quality",          rec.QUAL),
+                ("Allele Frequency", rec.INFO["AF"]),
                 ("Total Read Depth", rec.INFO["DP"]),
-                ("Read Depth Call",  rec.calls[0].data.get("DP")),
-                ("Ref Forw",         rec.calls[0].data.get("ADF")[0]),
-                ("Ref Rev",          rec.calls[0].data.get("ADR")[0]),
-                ("Alt Forw",         rec.calls[0].data.get("ADF")[1+alt_n]),  # ADF & ADR: [ref, alt1, alt2 e.c.t.]
-                ("Alt Rev",          rec.calls[0].data.get("ADR")[1+alt_n])
+                ("Ref Forw",         rec.INFO["DP4"][0]),
+                ("Ref Rev",          rec.INFO["DP4"][1]),
+                ("Alt Forw",         rec.INFO["DP4"][2]),
+                ("Alt Rev",          rec.INFO["DP4"][3])
+                
+                
+                #("Total Read Depth", rec.INFO["DP"]),
+                #("Read Depth Call",  rec.calls[0].data.get("DP")),
+                #("Ref Forw",         rec.calls[0].data.get("ADF")[0]),
+                #("Ref Rev",          rec.calls[0].data.get("ADR")[0]),
+                #("Alt Forw",         rec.calls[0].data.get("ADF")[1+alt_n]),  # ADF & ADR: [ref, alt1, alt2 e.c.t.]
+                #("Alt Rev",          rec.calls[0].data.get("ADR")[1+alt_n])
             ])
 
 

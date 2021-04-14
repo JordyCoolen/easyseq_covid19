@@ -5,8 +5,8 @@ params.outDir = "./output"
 params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
 
 //filters
-call_treshold = 0.50
-qual_treshold = 20
+call_threshold = 0.40
+qual_threshold = 20
 min_depth = 10
 max_ambig = 0.09999
 
@@ -32,7 +32,7 @@ parse_stats      = "$baseDir/scripts/parse_stats.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.6.0
+Variant pipeline V0.7.0
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -41,8 +41,8 @@ codeBase   : $baseDir
 threads    : $params.threads
 
 ~~~~~~~~~~variant filter~~~~~~~~~~~~
-call_treshold: $call_treshold
-qual_treshold: $qual_treshold
+call_threshold: $call_threshold
+qual_threshold: $qual_threshold
 min_depth: $min_depth
 
 ~~~~~~~~~~lineage filter~~~~~~~~~~~~
@@ -136,19 +136,20 @@ process '2C_depth' {
 // Process 3A: Variant calling
 process '3A_variant_caller' {
     tag '3A'
-    conda "${baseDir}/conda/env-variantcalling/"
+    conda "${baseDir}/conda/env-lofreq/"
     publishDir outDir + '/rawvcf', mode: 'copy'
     input:
         file bam from bam_3A
     output:
-        file("${sampleName}.vcf.gz") into (rawvcf_3B, rawvcf_3C, rawvcf_3F)
+        file("${sampleName}.raw.vcf") into (rawvcf_3B, rawvcf_3C, rawvcf_3F)
         file ".command.*"
     script:
         """
-        bcftools mpileup -L 999999 -Q 0 -q 0 -A -B -d 1000000 \
-        --threads ${threads} -a \'FORMAT/DP,FORMAT/AD,FORMAT/ADF,FORMAT/ADR\' -f ${reference} ${bam} | \
+        lofreq indelqual --dindel --ref ${reference} -o ${sampleName}.lofreq.bam ${bam}
+        samtools index ${sampleName}.lofreq.bam
 
-        bcftools call --threads ${threads} --no-version -c -v --ploidy 1 -Ob -o ${sampleName}.vcf.gz
+        lofreq call-parallel --call-indels --no-default-filter --pp-threads ${threads} -f ${reference} --min-cov ${min_depth} \
+        -o ${sampleName}.raw.vcf ${sampleName}.lofreq.bam
         """
 }
 
@@ -157,17 +158,16 @@ process '3A_variant_caller' {
 // criteria used: too low overall DP, too low quality, percentage of alts over used depth
 process '3B_filter_variants' {
     tag '3B'
-    conda "${baseDir}/conda/env-variantcalling/"
+    conda "${baseDir}/conda/env-lofreq/"
     publishDir outDir + '/vcf', mode: 'copy'
     input:
         file vcf from rawvcf_3B
     output:
-        file("${sampleName}.vcf") into (vcf_3E, vcf_3D, vcf_5A)
+        file("${sampleName}.variants.vcf") into (vcf_3E, vcf_3D, vcf_5A)
         file ".command.*"
     script:
         """
-        bcftools view -Ov -i '%QUAL>=${qual_treshold} && \
-        %MAX(FORMAT/AD[0:1])/%MAX(FORMAT/DP)>=${call_treshold} && INFO/DP>=${min_depth}' ${vcf} > ${sampleName}.vcf
+        lofreq filter --no-defaults --af-min ${call_threshold} -i ${vcf} -o ${sampleName}.variants.vcf
         """
 }
 
@@ -186,8 +186,8 @@ process '3C_ubiquitous_variant' {
     script:
         """
 		bcftools query -f "%CHROM\\t%POS\\t%END\\n" -i \
-		"(%QUAL<${qual_treshold} || \
-		%MAX(FORMAT/AD[0:1])/%MAX(FORMAT/DP)<${call_treshold}) && \
+		"(%QUAL<${qual_threshold} || \
+		%MAX(FORMAT/AD[0:1])/%MAX(FORMAT/DP)<${call_threshold}) && \
 		INFO/DP>=${min_depth}" ${vcf} | awk '{{print(\$1 \"\\t\" \$2 \"\\t\" \$3 \"\\tubiquitous_variant\")}}' > ${sampleName}_ubiq.bed
         """
 }
@@ -220,17 +220,19 @@ process '3D_non_covered_regions' {
 process '3E_index_called_vcf' {
     tag '3E'
     conda "${baseDir}/conda/env-variantcalling/"
-    publishDir outDir + '/vcf_index', mode: 'copy'
+    publishDir outDir + '/vcf', mode: 'copy'
     input:
         file vcf from vcf_3E
     output:
-        file("${sampleName}_concat.vcf.gz") into (compressed_vcf_4A)
-        file("${sampleName}_concat.vcf.gz.csi") into (compressed_vcf_index_4A)
+        file("${sampleName}.final.vcf")
+        file("${sampleName}.final.vcf.gz") into (compressed_vcf_4A)
+        file("${sampleName}.final.vcf.gz.csi") into (compressed_vcf_index_4A)
         file ".command.*"
     script:
         """
-        bcftools view ${vcf} -O b > ${sampleName}_concat.vcf.gz
-        bcftools index --threads ${threads} ${sampleName}_concat.vcf.gz -o ${sampleName}_concat.vcf.gz.csi
+        sed '5i ##contig=<ID=NC_045512.2,length=29903>' ${vcf} > ${sampleName}.final.vcf
+        bcftools view ${sampleName}.final.vcf -O b > ${sampleName}.final.vcf.gz
+        bcftools index --threads ${threads} ${sampleName}.final.vcf.gz -o ${sampleName}.final.vcf.gz.csi
         """
 }
 
@@ -241,22 +243,18 @@ process '3E_index_called_vcf' {
 // WARNING: if filters are ever removed or added, they should change here as well
 process '3F_filter_variants_notpassed' {
     tag '3F'
-    conda "${baseDir}/conda/env-variantcalling/"
+    conda "${baseDir}/conda/env-lofreq/"
     publishDir outDir + '/vcf/notpassed', mode: 'copy'
     input:
         file vcf from rawvcf_3F
     output:
-        file("${sampleName}_3G.txt")
+        file("${sampleName}.notpassed.vcf")
         file ".command.*"
     script:
         """
-        bcftools view -Ov -i '%QUAL<${qual_treshold} || \
-        %MAX(FORMAT/AD[0:1])/%MAX(FORMAT/DP)<${call_treshold} || INFO/DP<${min_depth}' ${vcf} \
-        | "${baseDir}/conda/env-variantcalling/bin/python" "$vcf2table" - \
-        --sample ${sampleName} > ${sampleName}_3G.txt
+        lofreq filter --no-defaults --af-max ${call_threshold} -i ${vcf} -o ${sampleName}.notpassed.vcf
         """
 }
-
 
 // 4A: create the consensus fasta
 // variants that are marked as uncertain or low covered regions are masked by N
@@ -364,8 +362,8 @@ process '8A_parameters' {
         """
         touch parameters.txt
         echo "Parameter\tValue" >> parameters.txt
-        echo "mutation frequency:\t>=${call_treshold}" >> parameters.txt
-        echo "QUAL:\t>=${qual_treshold}" >> parameters.txt
+        echo "mutation frequency:\t>=${call_threshold}" >> parameters.txt
+        echo "QUAL:\t>=${qual_threshold}" >> parameters.txt
         echo "Minimum sequence depth:\t${min_depth}" >> parameters.txt
         echo "Maximum %N:\t${max_ambig}" >> parameters.txt
         """

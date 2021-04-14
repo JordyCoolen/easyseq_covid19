@@ -2,7 +2,7 @@
 
 ######
 INFO = "Convert results to PDF report"
-__version__ = "0.5.2"
+__version__ = "0.7.0"
 ######
 
 """
@@ -90,25 +90,8 @@ def fill_html(args):
     # obtain annotation file and stats
     variant_stats_df = pd.read_csv(args.annotation, sep='\t', engine='python', comment='##')
 
-    try:
-        # calculate ALT freq
-        variant_stats_df["ALT freq"] = (variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) /\
-                                       (variant_stats_df["Ref Forw"]+variant_stats_df["Ref Rev"] +
-                                       variant_stats_df["Alt Forw"]+variant_stats_df["Alt Rev"]) * 100
-
-        variant_stats_df = variant_stats_df.round({"ALT freq": 1})
-    except KeyError:
-        variant_stats_df = pd.DataFrame({'NA': []})
-
     # for now remove the added Shorthand column
     variant_stats_df = variant_stats_df.drop('Shorthand', 1)
-
-    # filter only annotation for better overview
-    try:
-        annotation_df = variant_stats_df[['Position','Var Type','Read Depth Call',
-                                          'ALT freq','HGVS']]
-    except KeyError:
-        annotation_df = pd.DataFrame({'NA': []})
 
     # fill html
     template_vars = {
@@ -126,11 +109,8 @@ def fill_html(args):
         # genome stats
         "stats": stats_df.to_html(index=False, header=True),
 
-        # annotation
-        "annotation": annotation_df.to_html(index=False, header=True),
-
-        # variant stats
-        "variant_stats": variant_stats_df.to_html(index=False, header=True),
+        # variants
+        "variants": variant_stats_df.to_html(index=False, header=True),
 
         # parameters
         "parameters": params_df.to_html(index=False, header=True),
