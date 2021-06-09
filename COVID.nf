@@ -5,7 +5,7 @@ params.outDir = "./output"
 params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
 
 //filters
-call_threshold = 0.40
+call_threshold = 0.5
 qual_threshold = 20
 min_depth = 10
 max_ambig = 0.09999
@@ -32,7 +32,7 @@ parse_stats      = "$baseDir/scripts/parse_stats.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.7.0
+Variant pipeline V0.8.0
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -68,12 +68,17 @@ process '1A_clean_reads' {
         set pairID, file(reads) from reads_ch1
     output:
         set file("${reads[0].baseName}_fastp.fastq.gz"), file("${reads[1].baseName}_fastp.fastq.gz") into fastp_2A
+        file "${reads[0].baseName}_fastpmerged.fastq.gz" into fastpmerged_2A
         file "${sampleName}.fastp.json"
         file ".command.*"
     script:
         """
-        fastp -i ${reads[0]} -I ${reads[1]} -o ${reads[0].baseName}_fastp.fastq.gz -O ${reads[1].baseName}_fastp.fastq.gz \
-        --trim_poly_x --length_required 100 --json ${sampleName}.fastp.json --html ${sampleName}.fastp.html --thread ${threads}
+        fastp --in1 ${reads[0]} --in2 ${reads[1]} \
+        --out1 ${reads[0].baseName}_fastp.fastq.gz --out2 ${reads[1].baseName}_fastp.fastq.gz \
+        --merge --merged_out ${reads[0].baseName}_fastpmerged.fastq.gz \
+        --overlap_diff_limit 0 \
+        --trim_poly_x --trim_poly_g --length_required 100 --thread ${threads} \
+        --json ${sampleName}.fastp.json --html ${sampleName}.fastp.html
         """
 }
 
@@ -84,13 +89,18 @@ process '2A_map_paired_reads' {
     publishDir outDir + '/mapping', mode: 'copy'
     input:
         set file(trimmed1), file(trimmed2) from fastp_2A
+        file fastpmerged from fastpmerged_2A
     output:
         file("${sampleName}.bam") into bam_2B
         file("${sampleName}.bam.bai") into bamindex_2B
         file ".command.*"
     script:
         """
-        bwa mem -M -k 10 -t ${threads} ${reference} ${trimmed1} ${trimmed2} | samtools sort -@${threads} -o ${sampleName}.bam -
+        bwa mem -M -k 10 -t ${threads} ${reference} ${fastpmerged} > ${sampleName}.long.bam
+        bwa mem -M -k 10 -t ${threads} ${reference} ${trimmed1} ${trimmed2} > ${sampleName}.short.bam
+
+        samtools merge ${sampleName}.merged.bam ${sampleName}.long.bam ${sampleName}.short.bam
+        samtools sort ${sampleName}.merged.bam -@${threads} -o ${sampleName}.bam
         samtools index ${sampleName}.bam > ${sampleName}.bam.bai
         """
 }
@@ -294,7 +304,7 @@ process '5A_annotation' {
         file ".command.*"
   script:
         """
-        snpEff eff -v NC_045512.2 ${vcf} -ud 0 -strict -hgvs1LetterAa \
+        snpEff eff -v NC_045512.2 ${vcf} -noShiftHgvs -ud 0 -strict -hgvs1LetterAa \
         -c ${baseDir}/db/snpEff.config -csvStats ${sampleName}_snpEff.csv \
         > ${vcf.baseName}_annot.vcf
         ${baseDir}/conda/env-variantcalling/bin/python $vcf2table ${vcf.baseName}_annot.vcf --sample ${sampleName} \
@@ -346,7 +356,7 @@ process '7B_genome_stats' {
         file ".command.*"
   script:
         """
-        facount ${consensus} > stats.txt
+        faCount ${consensus} > stats.txt
         python $parse_stats --stats stats.txt
         """
 }
