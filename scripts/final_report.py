@@ -2,7 +2,7 @@
 
 ######
 INFO = "Convert results to PDF report"
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 ######
 
 """

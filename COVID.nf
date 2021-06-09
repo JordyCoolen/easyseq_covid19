@@ -32,7 +32,7 @@ parse_stats      = "$baseDir/scripts/parse_stats.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.8.0
+Variant pipeline V0.8.1
 ================================
 sample     : $params.sampleName
 reads      : $params.reads
@@ -281,9 +281,7 @@ process '4A_create_consensus' {
         file ".command.*"
   script:
         """
-		cat ${reference} | bcftools consensus ${vcf} \
-		-m <(cat ${noncov}) \
-		${vcf} > ${sampleName}.fasta
+        bcftools consensus -f ${reference} -m ${noncov} --mark-del - ${vcf} > ${sampleName}.fasta
         sed -i 's/^>NC_045512.2/>${sampleName}/g' ${sampleName}.fasta
         """
 }
