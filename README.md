@@ -210,13 +210,11 @@ variant pipeline v0.7.0 or later
 ## REFERENCE
 For citing this work please cite:
 
-**Novel SARS-CoV-2 Whole-genome sequencing technique using Reverse Complement PCR enables easy, fast and accurate outbreak analysis in hospital and community settings**
-*Femke Wolters, Jordy P.M. Coolen, Alma Tostmann, Lenneke F.J. van Groningen, Chantal P. Bleeker-Rovers, Edward C.T.H. Tan, Nannet van der Geest-Blankert, Jeannine L.A. Hautvast, Joost Hopman, Heiman F.L. Wertheim, Janette C. Rahamat-Langendoen, Marko Storch, Willem J.G. Melchers
-bioRxiv 2020.10.29.360578; doi: https://doi.org/10.1101/2020.10.29.360578.*
+*Coolen, J. P., Wolters, F., Tostmann, A., van Groningen, L. F., Bleeker-Rovers, C. P., Tan, E. C., ... & Melchers, W. J. (2021).*
+**SARS-CoV-2 whole-genome sequencing using reverse complement PCR: For easy, fast and accurate outbreak and variant analysis.**
+Journal of Clinical Virology, 144, 104993. https://doi.org/10.1016/j.jcv.2021.104993
 
-Also cite the other programs used, see list of used tools 
-
-The work is currently under revision.
+Also cite the other programs used, see list of used tools
 
 ## DISCLAIMER
 This is for Research Only.
