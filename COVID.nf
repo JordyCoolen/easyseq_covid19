@@ -3,6 +3,7 @@
 params.threads = 4
 params.outDir = "./output"
 params.reads = "$baseDir/test/test_OUT01_R{1,2}.fastq.gz"
+params.primerVersion = "V4"
 
 //filters
 call_threshold = 0.5
@@ -15,7 +16,7 @@ sampleName       = "$params.sampleName"
 outDir           = "$params.outDir"
 threads          = "$params.threads"
 reference  = "$baseDir/db/data/NC_045512.2/NC_045512.2.fasta"
-primerfile = "$baseDir/db/primers_bedpe_V3.bed"
+primerfile = "$baseDir/db/primers_bedpe_${params.primerVersion}.bed"
 
 // special channel for the fastQ reads
 Channel
@@ -32,7 +33,7 @@ parse_stats      = "$baseDir/scripts/parse_stats.py"
 log.info """
 
 NEXTFLOW EasySeq RC-PCR SARS-CoV-2/COVID-19
-Variant pipeline V0.8.1
+Variant pipeline V0.9
 ================================
 sample     : $params.sampleName
 reads      : $params.reads

@@ -1,6 +1,6 @@
 # EasySeq RC-PCR SARS-CoV-2/COVID-19 WGS kit
-# Variant pipeline V0.8.1 
-## Use with V3 of the WGS kit, else see general info
+# Variant pipeline V0.9
+## Use with V3 and V4 of the WGS kit, else see general info
 
 ## Table of contents
 * [GENERAL-INFO](#GENERAL-INFO)
@@ -25,6 +25,10 @@ sequencing data. Validated with 150/151 bp paired-end reads.
 
 Advice is to redownload the conda.tar.gz after each update to
 be sure that all conda environments are set in place.
+
+#### v0.9 release (use with version 4 of EasySeq RC-PCR SARS-CoV-2 WGS kit)
+* New primer files added
+* option using primerVersion to change version of primers
 
 #### v0.8.1 release (use with version 3 of EasySeq RC-PCR SARS-CoV-2 WGS kit)
 * This version includes final fix for HV69-70 region
