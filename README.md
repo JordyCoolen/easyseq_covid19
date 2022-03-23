@@ -26,7 +26,7 @@ sequencing data. Validated with 150/151 bp paired-end reads.
 Advice is to redownload the conda.tar.gz after each update to
 be sure that all conda environments are set in place.
 
-## v0.9 release (use with version 4 of EasySeq RC-PCR SARS-CoV-2 WGS kit)
+## v0.9 release (use with version 4.2 of EasySeq RC-PCR SARS-CoV-2 WGS kit)
 * Fix for incorrect trimming of primer which result in an incorrect BA.2 ORF1A:I3758V mutation
 * New primer files added
 * option using primerVersion to change version of primers
