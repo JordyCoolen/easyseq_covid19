@@ -104,6 +104,24 @@ def merge_mutations(dict):
 
 def summarize(lineages, stats, mutations):
 
+    print('##')
+    print(lineages.iloc[:, 0])
+    lineages.index = lineages.index.astype('int64')
+    print(lineages.index.dtype)
+    print('##')
+
+    print('##')
+    print(stats.iloc[:, 0])
+    stats.index = stats.index.astype('int64')
+    print(stats.index.dtype)
+    print('##')
+
+    print('##')
+    print(mutations.iloc[:, 0])
+    mutations.index = mutations.index.astype('int64')
+    print(mutations.index.dtype)
+    print('##')
+
     return(pd.concat([lineages, stats, mutations], axis=1))
 
 def main():
